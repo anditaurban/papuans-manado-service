@@ -4,8 +4,13 @@
   const components = window.PMD_COMPONENTS;
   const config = window.PMD_CONFIG;
   const store = window.PMD_STORE;
+  const auth = window.PMD_AUTH;
 
-  const technicianStorageKey = config.storage.key + ":active-technician";
+  if (!auth || !auth.requireTechnician()) {
+    return;
+  }
+
+  const authSession = auth.getSession();
   const statusFlow = ["DITERIMA", "DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN", "SIAP_DIAMBIL", "SELESAI", "DIAMBIL"];
   const editableStatuses = ["DITERIMA", "DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN", "SIAP_DIAMBIL"];
   const closedStatuses = ["SELESAI", "DIAMBIL"];
@@ -146,30 +151,6 @@
       .pop();
   }
 
-  function getActiveTechnicianId(state) {
-    let stored = "";
-    try {
-      stored = window.localStorage.getItem(technicianStorageKey) || "";
-    } catch (error) {
-      stored = "";
-    }
-
-    const selected = state.technicians.find(function (technician) {
-      return technician.id === stored;
-    });
-
-    return selected ? selected.id : state.technicians[0].id;
-  }
-
-  function saveActiveTechnician(id) {
-    activeTechnicianId = id;
-    try {
-      window.localStorage.setItem(technicianStorageKey, id);
-    } catch (error) {
-      // Role switch demo remains usable without localStorage.
-    }
-  }
-
   function getAssignments(state, technicianId) {
     return state.serviceOrders.filter(function (service) {
       return service.technicianId === technicianId;
@@ -306,14 +287,6 @@
       html(label),
       "</option>"
     ].join("");
-  }
-
-  function technicianOptions(state, selected) {
-    return state.technicians
-      .map(function (technician) {
-        return option(technician.id, technician.name + " - " + technician.availability, selected);
-      })
-      .join("");
   }
 
   function statusOptions(selected) {
@@ -550,18 +523,33 @@
     ].join("");
   }
 
-  function renderRoleSwitch(state, technician) {
+  function renderSessionIdentity(technician) {
+    const skills = technician.skills
+      .map(function (skill) {
+        return [
+          '<span class="inline-flex min-h-8 items-center rounded-md border border-neutral-200 bg-neutral-50 px-3 text-xs font-bold text-neutral-700">',
+          html(skill),
+          "</span>"
+        ].join("");
+      })
+      .join("");
+
     return [
       '<section id="dashboard" class="app-card scroll-mt-24 p-5 sm:p-6">',
-      '<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">',
-      '<div><p class="text-sm font-semibold text-primary-600">Mode teknisi</p>',
+      '<div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">',
+      '<div><p class="text-sm font-semibold text-primary-600">Sesi teknisi aktif</p>',
       '<h2 class="mt-2 text-3xl font-black text-neutral-900">',
       html(technician.name),
-      '</h2><p class="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">Dashboard ini hanya menampilkan tiket yang assigned ke teknisi aktif.</p></div>',
-      '<label class="min-w-[min(24rem,100%)] text-sm font-semibold text-neutral-700">Pilih teknisi demo',
-      '<select class="mt-2 min-h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15" data-active-technician>',
-      technicianOptions(state, technician.id),
-      "</select></label></div>",
+      '</h2><p class="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">Dashboard hanya menampilkan tiket yang assigned ke akun ini.</p>',
+      '<p class="mt-2 text-xs font-semibold text-neutral-500">',
+      html(authSession.email),
+      "</p></div>",
+      '<div class="lg:max-w-md"><div class="flex flex-wrap gap-2">',
+      '<span class="inline-flex min-h-8 items-center rounded-md bg-neutral-900 px-3 text-xs font-bold text-white">',
+      html(technician.availability),
+      "</span>",
+      skills,
+      "</div></div></div>",
       "</section>"
     ].join("");
   }
@@ -807,14 +795,26 @@
 
   function renderApp() {
     const state = store.getState();
-    if (!activeTechnicianId) {
-      activeTechnicianId = getActiveTechnicianId(state);
+    const technician = getTechnician(state, activeTechnicianId);
+
+    if (!technician) {
+      components.initAppShell({
+        role: "technician",
+        active: "dashboard",
+        title: "Dashboard Teknisi",
+        subtitle: "Akun teknisi belum terhubung ke profil data",
+        content: components.emptyState({
+          title: "Profil teknisi tidak ditemukan",
+          message: "Keluar lalu gunakan kembali salah satu akun teknisi demo.",
+          iconName: "alert"
+        })
+      });
+      return;
     }
-    const technician = getTechnician(state, activeTechnicianId) || state.technicians[0];
-    activeTechnicianId = technician.id;
+
     const content = [
       '<div class="space-y-6">',
-      renderRoleSwitch(state, technician),
+      renderSessionIdentity(technician),
       renderKpis(state, technician),
       renderAssignments(state, technician),
       renderWaitingParts(state, technician),
@@ -827,7 +827,7 @@
       role: "technician",
       active: getActiveMenuId(),
       title: "Dashboard Teknisi",
-      subtitle: "Workflow assigned service dengan data lokal browser",
+      subtitle: technician.name + " - workflow assignment pribadi",
       content
     });
     syncActiveMenu();
@@ -866,13 +866,6 @@
     }
     eventsBound = true;
 
-    document.addEventListener("change", function (event) {
-      const selector = event.target.closest("[data-active-technician]");
-      if (selector) {
-        saveActiveTechnician(selector.value);
-        renderApp();
-      }
-    });
     document.addEventListener("submit", function (event) {
       const form = event.target.closest("[data-assignment-filter]");
       if (!form) {
@@ -1264,8 +1257,7 @@
   }
 
   components.onReady(function () {
-    const state = store.getState();
-    activeTechnicianId = getActiveTechnicianId(state);
+    activeTechnicianId = authSession.technicianId;
     renderApp();
     bindEvents();
     window.addEventListener("hashchange", syncActiveMenu);

@@ -3,8 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login Admin - Papuans Manado</title>
-    <meta name="description" content="Login demo admin Service Handphone Papuans Manado.">
+    <title>Login Operasional - Papuans Manado</title>
+    <link rel="icon" href="./assets/img/papuans-manado.jpg" type="image/x-icon"> 
+    <meta name="description" content="Login demo Admin/Pemilik dan Teknisi Service Handphone Papuans Manado.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="./assets/js/config.js"></script>
     <link rel="stylesheet" href="./assets/css/app.css">
@@ -22,9 +23,9 @@
         </a>
         <div class="max-w-md pb-16">
           <p class="text-sm font-bold text-red-400">Area internal</p>
-          <h2 class="mt-4 text-4xl font-black leading-tight">Operasional service dalam satu dashboard.</h2>
+          <h2 class="mt-4 text-4xl font-black leading-tight">Satu akses, workflow sesuai tanggung jawab.</h2>
           <p class="mt-5 text-sm leading-7 text-white/65">
-            Kelola tiket, teknisi, sparepart, pembayaran manual, dan laporan operasional Papuans Manado.
+            Admin mengelola operasional lengkap. Teknisi fokus pada assignment, diagnosis, tindakan, dan status service.
           </p>
         </div>
       </section>
@@ -39,15 +40,29 @@
             <a class="text-sm font-bold text-primary-600 hover:text-primary-500" href="index.html">Beranda</a>
           </div>
 
-          <p class="mt-8 text-sm font-bold text-primary-600 lg:mt-0">Login admin demo</p>
+          <p class="mt-8 text-sm font-bold text-primary-600 lg:mt-0">Akses operasional demo</p>
           <h1 class="mt-3 text-3xl font-black text-neutral-900">Selamat datang kembali</h1>
           <p class="mt-3 text-sm leading-6 text-neutral-600">
-            Masuk untuk membuka dashboard operasional Papuans Manado.
+            Masuk sebagai <strong class="text-neutral-900" data-login-role-copy>Admin/Pemilik</strong> untuk membuka dashboard yang sesuai.
           </p>
 
           <form class="mt-7" novalidate data-login-form>
+            <fieldset>
+              <legend class="text-sm font-bold text-neutral-900">Akses sebagai</legend>
+              <div class="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 bg-neutral-100 p-1">
+                <label class="cursor-pointer">
+                  <input class="peer sr-only" type="radio" name="role" value="admin" checked>
+                  <span class="flex min-h-11 items-center justify-center rounded-md px-3 text-center text-sm font-bold text-neutral-600 transition peer-checked:bg-neutral-900 peer-checked:text-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-500">Admin/Pemilik</span>
+                </label>
+                <label class="cursor-pointer">
+                  <input class="peer sr-only" type="radio" name="role" value="technician">
+                  <span class="flex min-h-11 items-center justify-center rounded-md px-3 text-center text-sm font-bold text-neutral-600 transition peer-checked:bg-primary-500 peer-checked:text-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-500">Teknisi</span>
+                </label>
+              </div>
+            </fieldset>
+
             <div>
-              <label class="text-sm font-bold text-neutral-900" for="login-email">Email</label>
+              <label class="mt-5 block text-sm font-bold text-neutral-900" for="login-email">Email</label>
               <input class="auth-input mt-2" id="login-email" name="email" type="email" autocomplete="username" placeholder="admin@papuansmanado.id" aria-describedby="login-message" required>
             </div>
 
@@ -65,19 +80,15 @@
               Masuk ke Dashboard
             </button>
 
-            <button class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-bold text-neutral-700 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" type="button" data-fill-demo>
-              Gunakan akun demo
-            </button>
+            <div class="mt-6">
+              <p class="text-xs font-black uppercase text-neutral-500">Akun demo tersedia</p>
+              <div class="mt-2 grid gap-2" data-demo-accounts></div>
+            </div>
           </form>
 
-          <div class="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-xs leading-5 text-neutral-600">
-            <p><strong class="text-neutral-900">Email:</strong> admin@papuansmanado.id</p>
-            <p class="mt-1"><strong class="text-neutral-900">Password:</strong> admin123</p>
-          </div>
-
           <p class="mt-6 text-center text-sm text-neutral-600">
-            Belum punya akun demo?
-            <a class="font-bold text-primary-600 hover:text-primary-500" href="register.html">Daftar sekarang</a>
+            Pendaftaran akun demo hanya untuk Admin/Pemilik.
+            <a class="font-bold text-primary-600 hover:text-primary-500" href="register.html">Daftar admin</a>
           </p>
         </div>
       </section>

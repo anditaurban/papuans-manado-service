@@ -7,8 +7,9 @@ Tailwind CSS Play CDN, JavaScript vanilla, data dummy lokal, dan simulasi
 persistensi browser melalui `localStorage`.
 
 Phase 11 menambahkan identitas brand dari `assets/img/papuans-manado.jpg`,
-kontak bisnis final, navigasi admin per modul, login/register admin demo, dan
-restyle landing berbasis ilustrasi lokal.
+kontak bisnis final, navigasi admin per modul, login demo berbasis role
+Admin/Pemilik dan Teknisi, register admin demo, serta restyle landing berbasis
+ilustrasi lokal.
 
 Tidak ada npm, build tool, backend, database, API server, payment gateway,
 checkout, e-commerce, upload server, WhatsApp API nyata, atau autentikasi nyata
@@ -29,7 +30,7 @@ Urutan script setiap halaman tetap:
 
 1. Tailwind CSS Play CDN
 2. `assets/js/config.js`
-3. `assets/js/auth.js` pada login, register, dan admin
+3. `assets/js/auth.js` pada login, register, admin, dan teknisi
 4. `assets/js/data.js`
 5. `assets/js/store.js`
 6. `assets/js/components.js`
@@ -102,17 +103,21 @@ Privacy:
 
 ### `login.html` dan `register.html`
 
-Halaman akses admin demo berbasis state browser lokal.
+Halaman akses operasional demo berbasis state browser lokal. Login menyediakan
+role Admin/Pemilik dan Teknisi; register tetap khusus Admin/Pemilik.
 
 Script: `assets/js/auth.js`
 
 Action utama:
 
-- Seed akun demo `admin@papuansmanado.id`
-- Login dan validasi form
+- Seed akun Admin/Pemilik `admin@papuansmanado.id` / `admin123`
+- Seed akun Teknisi `rian@papuansmanado.id`, `melky@papuansmanado.id`, dan
+  `fadly@papuansmanado.id` dengan password `teknisi123`
+- Pilihan role, isi akun demo, login, dan validasi form
 - Register akun admin demo di browser
-- Membuat dan menghapus sesi demo
-- Mengarahkan guest dari `admin.html` ke login
+- Membuat sesi dengan role dan `technicianId`
+- Mengarahkan guest dari `admin.html` atau `teknisi.html` ke login
+- Menolak silang akses dan mengembalikan pengguna ke dashboard role aktif
 - Handoff query satu kali untuk demo yang dibuka langsung melalui `file://`
 
 Password demo tidak aman untuk produksi dan tidak menggantikan autentikasi
@@ -158,11 +163,11 @@ Action utama:
 
 ### `teknisi.html`
 
-Dashboard kerja teknisi dengan role switch demo.
+Dashboard kerja teknisi berdasarkan akun dan sesi demo aktif.
 
 Modul UI:
 
-- Selector teknisi aktif
+- Identitas teknisi dari `technicianId` sesi
 - KPI teknisi
 - Assignment aktif
 - Filter tugas
@@ -171,12 +176,12 @@ Modul UI:
 - Riwayat update
 - Profil demo teknisi
 
-Script: `assets/js/teknisi.js`
+Script: `assets/js/auth.js`, `assets/js/teknisi.js`
 
 Action utama:
 
-- Pilih teknisi demo aktif
-- Lihat hanya service assigned ke teknisi aktif
+- Guard role dan logout teknisi
+- Lihat hanya service assigned ke akun teknisi aktif
 - Buka detail assignment
 - Update diagnosis, tindakan, estimasi selesai, biaya rekomendasi, dan status
 - Catat sparepart dan kurangi stok
@@ -291,8 +296,10 @@ Kontrak UI:
 
 - `getUsers()`
 - `getSession()`
+- `requireRole(role)`
 - `requireAdmin()`
-- `login(email, password)`
+- `requireTechnician()`
+- `login(email, password, role)`
 - `register(payload)`
 - `logout()`
 - `initAuthPage()`
@@ -361,7 +368,9 @@ untuk tahap backend/API setelah frontend fixed.
 - Kontak bisnis adalah `+62 821-9008-7876`.
 - Data source remains `assets/js/data.js`; runtime state remains `store.js`.
 - `localStorage` is only a browser simulation layer.
-- Login/register/logout admin disimulasikan melalui localStorage, bukan real auth.
+- Login/logout Admin dan Teknisi serta register Admin disimulasikan melalui
+  localStorage, bukan real auth.
+- Setiap akun teknisi seed terhubung ke satu profil `technicianId`.
 - Payment is manual cash or transfer record only.
 - Reports are operational summaries, not accounting.
 - Sparepart is only a repair component inventory, not a retail catalog.
@@ -381,6 +390,10 @@ Validated:
 - Tailwind Play CDN dimuat sebelum custom config pada seluruh halaman
 - Login demo valid/invalid dan fallback auth storage rusak
 - Register demo, duplicate email, session, guest guard, dan logout
+- Tiga akun teknisi seed terhubung ke `TEC-001`, `TEC-002`, dan `TEC-003`
+- Redirect login berdasarkan role serta penolakan silang Admin/Teknisi
+- Dashboard teknisi mengikuti identitas sesi tanpa selector teknisi bebas
+- Assignment teknisi dibatasi pada `technicianId` sesi
 - Handoff sesi demo untuk navigasi langsung antar-file lokal
 - Sepuluh menu admin merender tepat satu modul aktif
 - Sidebar desktop dan struktur off-canvas mobile

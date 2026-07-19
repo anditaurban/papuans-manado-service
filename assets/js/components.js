@@ -592,13 +592,13 @@
       "</button>",
       '<div class="min-w-0 flex-1"><p class="text-xs font-semibold text-primary-600">',
       escapeHtml(config.app.shortName),
-      '</p><h1 class="truncate text-xl font-bold text-neutral-900 sm:text-2xl">',
+      '</p><h1 class="text-base font-bold leading-tight text-neutral-900 sm:text-2xl">',
       escapeHtml(settings.title),
       '</h1><p class="mt-1 hidden text-sm text-neutral-600 sm:block">',
       escapeHtml(settings.subtitle),
       "</p></div>",
       '<div class="flex items-center gap-2"><a href="index.html" class="hidden min-h-11 items-center rounded-lg border border-neutral-200 px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 sm:inline-flex">Halaman Publik</a>',
-      settings.role === "admin"
+      settings.role === "admin" || settings.role === "technician"
         ? '<button type="button" class="inline-flex min-h-11 items-center rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" data-auth-logout>Keluar</button>'
         : "",
       "</div>",
