@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Handphone Papuans Manado</title>
+    <link rel="icon" href="./assets/img/papuans-manado.jpg" type="image/x-icon">  
+    <meta
+      name="description"
+      content="Website operasional frontend-only untuk service handphone Papuans Manado."
+    >
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./assets/js/config.js"></script>
+    <link rel="stylesheet" href="./assets/css/app.css">
+  </head>
+  <body class="bg-neutral-50 text-neutral-900 antialiased">
+    <a class="skip-link" href="#main">Lewati ke konten utama</a>
+    <div data-public-nav></div>
+
+    <main id="main">
+      <section class="brand-hero relative isolate overflow-hidden text-white">
+        <img
+          class="absolute inset-0 -z-20 h-full w-full object-cover"
+          src="./assets/img/hero-service-workbench.png"
+          alt="Meja kerja service handphone dengan perangkat terbuka dan alat presisi"
+          width="1792"
+          height="1024"
+        >
+        <div class="absolute inset-0 -z-10 bg-black/75"></div>
+
+        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+          <div class="max-w-3xl">
+            <p class="inline-flex min-h-8 items-center border-l-4 border-primary-500 bg-black/50 px-3 text-sm font-semibold text-white/85">
+              Service Handphone Cepat, Aman & Bergaransi
+            </p>
+            <h1 class="mt-5 max-w-3xl text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
+              Service Handphone Papuans Manado
+            </h1>
+            <p class="mt-5 max-w-2xl text-base leading-8 text-white/80 sm:text-lg">
+              Terima service, pantau diagnosa, ikuti pengerjaan, dan cek kapan
+              perangkat siap diambil dengan nomor resi.
+            </p>
+
+            <form
+              id="cek-status"
+              class="hero-tracking-panel mt-8 max-w-2xl p-5 sm:p-6"
+              action="./tracking.html"
+              method="get"
+              aria-label="Cek status service"
+              novalidate
+              data-tracking-form
+            >
+              <label class="text-sm font-semibold text-white" for="receipt">Nomor resi service</label>
+              <div class="mt-3 flex flex-col gap-3 sm:flex-row">
+                <input
+                  id="receipt"
+                  name="resi"
+                  class="min-h-12 flex-1 rounded-lg border border-white/70 bg-white px-4 text-sm font-semibold text-neutral-900 outline-none transition placeholder:text-neutral-500 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20"
+                  placeholder="PMD-20260714-0001"
+                  pattern="PMD-[0-9]{8}-[0-9]{4}"
+                  autocomplete="off"
+                  aria-describedby="receipt-helper receipt-error"
+                  required
+                  data-receipt-input
+                >
+                <button
+                  type="submit"
+                  class="inline-flex min-h-12 items-center justify-center rounded-lg bg-primary-500 px-5 text-sm font-bold text-white transition hover:bg-primary-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  data-tracking-submit
+                >
+                  Cek Status Service
+                </button>
+              </div>
+              <p id="receipt-helper" class="mt-3 text-xs leading-5 text-white/70">
+                Coba resi demo PMD-20260714-0001 atau PMD-20260715-0002.
+              </p>
+              <p id="receipt-error" class="mt-3 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert" data-receipt-error></p>
+            </form>
+
+            <div class="mt-5 flex flex-wrap gap-2" aria-label="Resi demo">
+              <button type="button" class="landing-chip" data-demo-receipt="PMD-20260714-0001">Pengerjaan</button>
+              <button type="button" class="landing-chip" data-demo-receipt="PMD-20260715-0002">Menunggu sparepart</button>
+              <button type="button" class="landing-chip" data-demo-receipt="PMD-20260719-9999">Tidak ditemukan</button>
+            </div>
+
+            <div class="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3" aria-label="Ringkasan layanan">
+              <div class="rounded-lg border border-white/15 bg-black/40 p-4 backdrop-blur">
+                <p class="text-2xl font-black tabular-nums" data-hero-total-services>0</p>
+                <p class="mt-1 text-xs font-semibold text-white/70">Tiket demo</p>
+              </div>
+              <div class="rounded-lg border border-white/15 bg-black/40 p-4 backdrop-blur">
+                <p class="text-2xl font-black tabular-nums" data-hero-active-services>0</p>
+                <p class="mt-1 text-xs font-semibold text-white/70">Dalam proses</p>
+              </div>
+              <div class="rounded-lg border border-white/15 bg-black/40 p-4 backdrop-blur">
+                <p class="text-2xl font-black tabular-nums" data-hero-technicians>0</p>
+                <p class="mt-1 text-xs font-semibold text-white/70">Teknisi demo</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="layanan" class="landing-section services-section bg-white py-14 sm:py-20 lg:py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+            <div class="max-w-xl">
+              <p class="section-kicker text-sm">Jenis layanan umum</p>
+              <h2 class="mt-3 text-3xl font-black text-neutral-900 sm:text-4xl">Masalah perangkat ditangani dari sumbernya.</h2>
+              <p class="mt-5 text-sm leading-7 text-neutral-600 sm:text-base">
+                Pemeriksaan dimulai dari keluhan dan kondisi perangkat. Rekomendasi
+                perbaikan diberikan setelah teknisi memahami bagian yang bermasalah.
+              </p>
+              <div class="mt-7 flex flex-wrap gap-3">
+                <a class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary-500 px-4 text-sm font-bold text-white hover:bg-primary-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" href="#cek-status">
+                  Cek Status Service
+                </a>
+                <a class="inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-bold text-neutral-900 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" href="#kontak">
+                  Konsultasi Awal
+                </a>
+              </div>
+            </div>
+
+            <figure class="section-media">
+              <img src="./assets/img/service-inspection.jpg" alt="Teknisi memeriksa komponen internal handphone di meja kerja presisi" width="1697" height="927" loading="lazy">
+              <figcaption>
+                <span class="section-media-marker" aria-hidden="true"></span>
+                Inspeksi presisi sebelum keputusan perbaikan
+              </figcaption>
+            </figure>
+          </div>
+
+          <div class="service-grid mt-10 lg:mt-14">
+            <article class="service-item">
+              <div class="service-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="6" y="2.5" width="12" height="19" rx="2"></rect>
+                  <path d="M10 18h4"></path>
+                </svg>
+              </div>
+              <div>
+                <h3>Layar dan display</h3>
+                <p>Layar bergaris, pecah, redup, atau touch tidak responsif.</p>
+              </div>
+            </article>
+            <article class="service-item">
+              <div class="service-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M8 3h8v4H8zM6 7h12v14H6z"></path>
+                  <path d="m13 10-3 5h3l-2 4"></path>
+                </svg>
+              </div>
+              <div>
+                <h3>Baterai dan charging</h3>
+                <p>Baterai boros, perangkat panas, port longgar, atau gagal mengisi.</p>
+              </div>
+            </article>
+            <article class="service-item">
+              <div class="service-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 4h14v16H5z"></path>
+                  <path d="M8 9h8M8 13h5M8 17h3"></path>
+                </svg>
+              </div>
+              <div>
+                <h3>Software dan bootloop</h3>
+                <p>Gangguan sistem, aplikasi berat, gagal update, atau perangkat berulang restart.</p>
+              </div>
+            </article>
+            <article class="service-item">
+              <div class="service-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2s6 6.2 6 12a6 6 0 0 1-12 0c0-5.8 6-12 6-12Z"></path>
+                  <path d="M9 15c.6 1.2 1.6 2 3 2"></path>
+                </svg>
+              </div>
+              <div>
+                <h3>Air dan komponen</h3>
+                <p>Korosi, kamera, speaker, mikrofon, dan komponen board diperiksa menyeluruh.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="proses" class="process-section py-14 text-white sm:py-20 lg:py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div>
+              <div class="max-w-2xl">
+                <p class="text-sm font-bold text-red-400">Proses service</p>
+                <h2 class="mt-3 text-3xl font-black sm:text-4xl">Empat langkah, satu alur yang dapat dipantau.</h2>
+                <p class="mt-5 text-sm leading-7 text-white/65 sm:text-base">
+                  Setiap perubahan dicatat dengan waktu, aktor, dan ringkasan agar
+                  pelanggan memahami posisi perangkatnya.
+                </p>
+              </div>
+              <figure class="process-media mt-8">
+                <img src="./assets/img/process-diagnostics.jpg" alt="Proses diagnosis handphone dengan multimeter dan alat presisi" width="1731" height="909" loading="lazy">
+                <figcaption>Diagnosis terukur sebelum tindakan perbaikan</figcaption>
+              </figure>
+            </div>
+
+            <ol class="process-steps" aria-label="Empat tahap proses service">
+              <li>
+                <span class="process-step-number">01</span>
+                <div>
+                  <p class="process-step-label">Terima</p>
+                  <h3>Keluhan dan kondisi dicatat.</h3>
+                  <p>Admin mendokumentasikan perangkat, kelengkapan, dan kondisi fisik awal.</p>
+                </div>
+              </li>
+              <li>
+                <span class="process-step-number">02</span>
+                <div>
+                  <p class="process-step-label">Diagnosa</p>
+                  <h3>Sumber masalah diperiksa.</h3>
+                  <p>Teknisi menguji komponen dan menyusun estimasi tindakan yang diperlukan.</p>
+                </div>
+              </li>
+              <li>
+                <span class="process-step-number">03</span>
+                <div>
+                  <p class="process-step-label">Perbaikan</p>
+                  <h3>Pengerjaan dilakukan terarah.</h3>
+                  <p>Perbaikan dan pemakaian sparepart dicatat pada riwayat service.</p>
+                </div>
+              </li>
+              <li>
+                <span class="process-step-number">04</span>
+                <div>
+                  <p class="process-step-label">Siap diambil</p>
+                  <h3>Hasil akhir dikonfirmasi.</h3>
+                  <p>Pelanggan melihat status akhir dan mengambil perangkat di lokasi.</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section benefits-section bg-white py-14 sm:py-20 lg:py-24">
+        <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8">
+          <div>
+            <p class="section-kicker text-sm">Keunggulan operasional</p>
+            <h2 class="mt-3 text-3xl font-black text-neutral-900 sm:text-4xl">Informasi rapi, keputusan lebih tenang.</h2>
+            <p class="mt-5 max-w-xl text-sm leading-7 text-neutral-600 sm:text-base">
+              Pelanggan mendapat progres yang mudah dipahami, sementara admin dan
+              teknisi bekerja menggunakan catatan service yang sama.
+            </p>
+
+            <div class="benefit-list mt-8">
+              <article>
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"></path></svg>
+                </span>
+                <div><h3>Status jelas</h3><p>Setiap status selalu disertai teks dan tindakan berikutnya.</p></div>
+              </article>
+              <article>
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </span>
+                <div><h3>Estimasi transparan</h3><p>Biaya dibedakan antara estimasi awal dan total final.</p></div>
+              </article>
+              <article>
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+                </span>
+                <div><h3>Data publik aman</h3><p>Nama, WhatsApp pelanggan, dan IMEI tetap ditampilkan dalam bentuk masking.</p></div>
+              </article>
+              <article>
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16"></path></svg>
+                </span>
+                <div><h3>Tracking tanpa login</h3><p>Pelanggan cukup menggunakan nomor resi yang diterima saat service.</p></div>
+              </article>
+            </div>
+          </div>
+
+          <figure class="section-media section-media-tall">
+            <img src="./assets/img/service-handoff.jpg" alt="Teknisi menyerahkan kembali handphone yang telah selesai diperbaiki kepada pelanggan" width="1774" height="887" loading="lazy">
+            <figcaption>
+              <span class="section-media-marker" aria-hidden="true"></span>
+              Serah-terima setelah status dan hasil akhir dikonfirmasi
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="status-flow" class="status-section py-14 sm:py-20 lg:py-24" aria-labelledby="status-flow-heading">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div class="max-w-3xl">
+              <p class="section-kicker text-sm">Status flow</p>
+              <h2 id="status-flow-heading" class="mt-3 text-3xl font-black text-neutral-900 sm:text-4xl">Satu bahasa status dari diterima sampai diambil.</h2>
+              <p class="mt-5 text-sm leading-7 text-neutral-600 sm:text-base">
+                Urutan canonical dipakai konsisten pada tracking pelanggan, dashboard
+                admin, pekerjaan teknisi, dan laporan.
+              </p>
+            </div>
+            <p class="status-count"><strong>7</strong><span>status canonical</span></p>
+          </div>
+          <div class="mt-10" data-status-strip aria-label="Tahapan status service"></div>
+          <p class="status-note mt-6">
+            <span aria-hidden="true"></span>
+            Menunggu sparepart adalah tahap opsional sesuai kebutuhan komponen.
+          </p>
+        </div>
+      </section>
+
+      <section class="testimonial-section py-14 text-white sm:py-20 lg:py-24" aria-labelledby="testimonial-heading">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
+            <div>
+              <p class="text-sm font-bold text-red-400">Testimoni dummy</p>
+              <h2 id="testimonial-heading" class="mt-3 text-3xl font-black sm:text-4xl">Contoh pengalaman pelanggan.</h2>
+              <p class="mt-5 text-sm leading-7 text-white/60">
+                Data berikut hanya untuk review prototype dan bukan klaim ulasan nyata.
+              </p>
+            </div>
+
+            <div class="testimonial-slider" role="region" aria-roledescription="carousel" aria-label="Testimoni pelanggan dummy" tabindex="0" data-testimonial-slider>
+              <div class="testimonial-stage" aria-live="polite">
+                <figure data-testimonial-slide aria-label="Testimoni 1 dari 3">
+                  <span class="testimonial-quote" aria-hidden="true">&ldquo;</span>
+                  <blockquote>Status service mudah dicek. Saya tahu kapan perangkat sudah siap diambil tanpa harus menghubungi berkali-kali.</blockquote>
+                  <figcaption>
+                    <span class="testimonial-avatar" aria-hidden="true">AM</span>
+                    <span><strong>A. Maramis</strong><small>Simulasi pelanggan layar</small></span>
+                  </figcaption>
+                </figure>
+                <figure class="hidden" data-testimonial-slide aria-label="Testimoni 2 dari 3" aria-hidden="true">
+                  <span class="testimonial-quote" aria-hidden="true">&ldquo;</span>
+                  <blockquote>Estimasi dan update pengerjaan terasa lebih jelas dari awal. Saya bisa mengikuti prosesnya dari nomor resi.</blockquote>
+                  <figcaption>
+                    <span class="testimonial-avatar" aria-hidden="true">MW</span>
+                    <span><strong>M. Waworuntu</strong><small>Simulasi pelanggan baterai</small></span>
+                  </figcaption>
+                </figure>
+                <figure class="hidden" data-testimonial-slide aria-label="Testimoni 3 dari 3" aria-hidden="true">
+                  <span class="testimonial-quote" aria-hidden="true">&ldquo;</span>
+                  <blockquote>Informasi perangkat dan status pembayaran tertata, jadi proses pengambilan terasa lebih sederhana.</blockquote>
+                  <figcaption>
+                    <span class="testimonial-avatar" aria-hidden="true">YR</span>
+                    <span><strong>Y. Rumbayan</strong><small>Simulasi pelanggan charging</small></span>
+                  </figcaption>
+                </figure>
+              </div>
+
+              <div class="testimonial-controls">
+                <div class="flex gap-2">
+                  <button type="button" aria-label="Testimoni sebelumnya" data-testimonial-prev>
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg>
+                  </button>
+                  <button type="button" aria-label="Testimoni berikutnya" data-testimonial-next>
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg>
+                  </button>
+                </div>
+                <div class="testimonial-dots" aria-label="Pilih testimoni" data-testimonial-dots></div>
+                <p class="testimonial-counter" aria-live="polite" data-testimonial-counter>01 / 03</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="faq-section bg-white py-14 sm:py-20 lg:py-24">
+        <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:px-8">
+          <div>
+            <div class="lg:sticky lg:top-28">
+              <p class="section-kicker text-sm">FAQ</p>
+              <h2 class="mt-3 text-3xl font-black text-neutral-900 sm:text-4xl">Pertanyaan yang paling sering muncul.</h2>
+              <p class="mt-5 text-sm leading-7 text-neutral-600 sm:text-base">
+                Informasi singkat sebelum perangkat masuk, selama pengerjaan, dan saat pengambilan.
+              </p>
+              <aside class="faq-contact mt-8">
+                <img src="./assets/img/papuans-manado.jpg" alt="Logo Papuans Manado" width="96" height="96">
+                <div>
+                  <p>Masih ada pertanyaan?</p>
+                  <a href="https://wa.me/6282190087876" target="_blank" rel="noopener noreferrer">Hubungi Papuans Manado</a>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="faq-list">
+            <details open>
+              <summary><span>01</span><strong>Apa yang saya butuhkan untuk cek status?</strong></summary>
+              <p>Gunakan nomor resi dengan format PMD-YYYYMMDD-0000 yang diberikan saat service diterima.</p>
+            </details>
+            <details>
+              <summary><span>02</span><strong>Apakah biaya langsung pasti?</strong></summary>
+              <p>Biaya awal adalah estimasi. Total final dikonfirmasi setelah diagnosis dan pengerjaan selesai.</p>
+            </details>
+            <details>
+              <summary><span>03</span><strong>Apa arti menunggu sparepart?</strong></summary>
+              <p>Perbaikan tertahan karena komponen service sedang disiapkan atau belum tersedia.</p>
+            </details>
+            <details>
+              <summary><span>04</span><strong>Apakah tracking terhubung secara real-time?</strong></summary>
+              <p>Prototype ini memakai data lokal di browser untuk simulasi tampilan, bukan sinkronisasi server.</p>
+            </details>
+            <details>
+              <summary><span>05</span><strong>Apakah data perangkat ditampilkan penuh?</strong></summary>
+              <p>Tidak. Nama pelanggan, nomor WhatsApp pelanggan, dan IMEI dimasking pada halaman tracking publik.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section id="kontak" class="border-t-4 border-primary-500 bg-brand-900 py-12 text-white sm:py-16 lg:py-20">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:px-8 lg:items-center">
+          <div>
+            <p class="text-sm font-semibold text-primary-500">Kontak dan lokasi</p>
+            <h2 class="mt-3 text-3xl font-black">Datang ke Papuans Manado saat perangkat siap diambil</h2>
+            <p class="mt-4 text-sm leading-7 text-white/75">
+              Hubungi kami untuk konsultasi awal atau datang langsung ke lokasi service.
+            </p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <article class="rounded-2xl border border-white/15 bg-white/10 p-5">
+              <h3 class="text-sm font-bold">Alamat</h3>
+              <p class="mt-2 text-sm leading-6 text-white/75">Jl. Teluk Bayur, Kelurahan Kleak, Kecamatan Malalayang, Kota Manado, Sulawesi Utara</p>
+            </article>
+            <article class="rounded-2xl border border-white/15 bg-white/10 p-5">
+              <h3 class="text-sm font-bold">Jam operasional</h3>
+              <p class="mt-2 text-sm leading-6 text-white/75">Senin-Sabtu, 09.00-20.00 WITA</p>
+            </article>
+            <article class="rounded-2xl border border-white/15 bg-white/10 p-5 sm:col-span-2">
+              <h3 class="text-sm font-bold">WhatsApp</h3>
+              <p class="mt-2 text-sm leading-6 text-white/75">+62 821-9008-7876</p>
+              <a class="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary-500 px-4 text-sm font-bold text-white hover:bg-primary-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" href="https://wa.me/6282190087876" target="_blank" rel="noopener noreferrer">
+                Tanya melalui WhatsApp
+              </a>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <a class="whatsapp-fab" href="https://wa.me/6282190087876" target="_blank" rel="noopener noreferrer" aria-label="Hubungi Papuans Manado melalui WhatsApp">
+      <svg class="h-6 w-6 shrink-0" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2a9.8 9.8 0 0 0-8.5 14.7L2.2 22l5.4-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 0 1 6.9 12 8 8 0 0 1-10.7 2.8l-.7-.4-2.5.6.6-2.4-.4-.7A8 8 0 0 1 12 4Zm-3.3 3.8c-.2 0-.5.1-.7.3-.4.4-1 1-.9 2.3.1 1.4 1 2.8 1.2 3 .2.2 1.8 2.9 4.5 3.9 2.2.8 2.7.6 3.2.5.5-.1 1.6-.7 1.8-1.3.2-.6.2-1.1.1-1.2-.1-.2-.4-.3-.9-.5l-1.7-.8c-.4-.2-.7-.1-.9.2l-.7.9c-.2.3-.5.3-.8.1a7 7 0 0 1-2.1-1.3 7.7 7.7 0 0 1-1.4-1.8c-.2-.4 0-.6.1-.8l.5-.6.3-.6c.1-.2 0-.5 0-.7l-.8-1.8c-.2-.5-.4-.5-.8-.5Z"></path>
+      </svg>
+      <span>Tanya via WhatsApp</span>
+    </a>
+
+    <div data-public-footer></div>
+
+    <script src="./assets/js/data.js"></script>
+    <script src="./assets/js/store.js"></script>
+    <script src="./assets/js/components.js"></script>
+    <script src="./assets/js/landing.js"></script>
+  </body>
+</html>
