@@ -228,54 +228,6 @@
     };
   }
 
-  function generateId(collection, prefix) {
-    const maxNumber = collection.reduce(function (max, item) {
-      const current = parseInt(String(item.id || "").split("-").pop(), 10);
-      return Number.isFinite(current) ? Math.max(max, current) : max;
-    }, 0);
-
-    return prefix + "-" + String(maxNumber + 1).padStart(3, "0");
-  }
-
-  function generateReceipt(state) {
-    const dateKey = getDashboardDate(state.serviceOrders) || toDateKey(new Date().toISOString());
-    const dateToken = dateKey.replace(/-/g, "");
-    const prefix = "PMD-" + dateToken + "-";
-    const maxNumber = state.serviceOrders.reduce(function (max, service) {
-      if (!service.receipt.startsWith(prefix)) {
-        return max;
-      }
-
-      const current = parseInt(service.receipt.split("-").pop(), 10);
-      return Number.isFinite(current) ? Math.max(max, current) : max;
-    }, 0);
-
-    return prefix + String(maxNumber + 1).padStart(4, "0");
-  }
-
-  function addTimeline(draft, service, status, note) {
-    draft.timelines.push({
-      id: generateId(draft.timelines, "TL"),
-      serviceId: service.id,
-      at: new Date().toISOString(),
-      actor: "Admin",
-      status,
-      note
-    });
-  }
-
-  function applyStatusTimestamp(service, status) {
-    if (status === "SIAP_DIAMBIL" && !service.readyAt) {
-      service.readyAt = new Date().toISOString();
-    }
-    if (status === "SELESAI" && !service.completedAt) {
-      service.completedAt = new Date().toISOString();
-    }
-    if (status === "DIAMBIL" && !service.pickedUpAt) {
-      service.pickedUpAt = new Date().toISOString();
-    }
-  }
-
   function getPartUsageEntries(state) {
     return state.serviceOrders.flatMap(function (service) {
       return (service.partUsages || []).map(function (usage) {
@@ -359,6 +311,24 @@
         })
         .join("")
     );
+  }
+
+  function workflowStatusOptions(currentStatus) {
+    const transitions = {
+      DITERIMA: ["DITERIMA", "DIAGNOSA"],
+      DIAGNOSA: ["DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN"],
+      MENUNGGU_SPAREPART: ["MENUNGGU_SPAREPART", "PENGERJAAN"],
+      PENGERJAAN: ["PENGERJAAN", "SIAP_DIAMBIL"],
+      SIAP_DIAMBIL: ["SIAP_DIAMBIL", "SELESAI"],
+      SELESAI: ["SELESAI", "DIAMBIL"],
+      DIAMBIL: ["DIAMBIL"]
+    };
+    const statuses = currentStatus ? transitions[currentStatus] || [currentStatus] : ["DITERIMA"];
+    return statuses
+      .map(function (status) {
+        return option(status, getStatusLabel(status), currentStatus || "DITERIMA");
+      })
+      .join("");
   }
 
   function technicianOptions(state, selected, includeAll, includeBlank) {
@@ -579,16 +549,14 @@
     ].join("");
   }
 
-  function tableWrap(headers, rows, minWidth) {
+  function tableWrap(headers, rows) {
     return [
-      '<div class="overflow-x-auto">',
-      '<table class="min-w-[',
-      attr(minWidth || "900px"),
-      '] w-full divide-y divide-neutral-200 text-sm">',
+      '<div class="admin-table-shell">',
+      '<table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
       '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr>',
       headers
         .map(function (header) {
-          return '<th class="px-4 py-3">' + html(header) + "</th>";
+          return '<th scope="col">' + html(header) + "</th>";
         })
         .join(""),
       "</tr></thead>",
@@ -596,6 +564,29 @@
       rows.join(""),
       "</tbody></table></div>"
     ].join("");
+  }
+
+  function enhanceAdminTables() {
+    document.querySelectorAll(".admin-responsive-table").forEach(function (table) {
+      const labels = Array.from(table.querySelectorAll("thead th")).map(function (header) {
+        return String(header.textContent || "").trim();
+      });
+
+      table.querySelectorAll("tbody tr").forEach(function (row) {
+        const cells = Array.from(row.children).filter(function (cell) {
+          return cell.tagName === "TD";
+        });
+
+        if (cells.length === 1 && cells[0].colSpan > 1) {
+          cells[0].classList.add("admin-table-empty");
+          return;
+        }
+
+        cells.forEach(function (cell, index) {
+          cell.setAttribute("data-label", labels[index] || "Data");
+        });
+      });
+    });
   }
 
   function emptyRow(colspan, message) {
@@ -610,7 +601,7 @@
 
   function moduleFooter(count, total) {
     return [
-      '<div class="flex flex-col gap-2 border-t border-neutral-200 px-5 py-4 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">',
+      '<div class="flex flex-col gap-2 border-t border-neutral-200 px-5 py-4 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">',
       '<span>Menampilkan ',
       html(count),
       " dari ",
@@ -647,7 +638,7 @@
 
   function renderFilterForm(module, controls) {
     return [
-      '<form class="grid gap-3 border-b border-neutral-200 bg-white p-5 md:grid-cols-2 xl:grid-cols-4" data-filter-form="',
+      '<form class="grid gap-3 border-b border-neutral-200 bg-white p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4" data-filter-form="',
       attr(module),
       '">',
       controls.join(""),
@@ -693,7 +684,7 @@
     overlay.innerHTML = [
       '<section role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" aria-describedby="admin-modal-desc" class="max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-soft">',
       '<form data-admin-modal-form>',
-      '<div class="flex items-start justify-between gap-4 border-b border-neutral-200 p-5">',
+      '<div class="flex items-start justify-between gap-4 border-b border-neutral-200 p-5 sm:p-6">',
       '<div><h2 id="admin-modal-title" class="text-lg font-black text-neutral-900">',
       html(settings.title),
       '</h2><p id="admin-modal-desc" class="mt-2 text-sm leading-6 text-neutral-600">',
@@ -702,11 +693,11 @@
       '<button type="button" class="rounded-xl p-2 text-neutral-600 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" aria-label="Tutup dialog" data-modal-close>',
       components.icon("close", "h-5 w-5"),
       "</button></div>",
-      '<div class="p-5">',
+      '<div class="p-5 sm:p-6">',
       '<p class="mb-4 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert" data-form-error></p>',
       settings.body,
       "</div>",
-      '<div class="flex flex-col-reverse gap-3 border-t border-neutral-200 p-5 sm:flex-row sm:justify-end">',
+      '<div class="flex flex-col-reverse gap-3 border-t border-neutral-200 p-5 sm:flex-row sm:justify-end sm:p-6">',
       components.button({ label: settings.cancelText, variant: "secondary", attr: "data-modal-close" }),
       components.button({ label: settings.confirmText, variant: "primary", type: "submit", iconName: "check" }),
       "</div>",
@@ -737,11 +728,27 @@
         close();
       }
     });
-    overlay.querySelector("[data-admin-modal-form]").addEventListener("submit", function (event) {
+    overlay.querySelector("[data-admin-modal-form]").addEventListener("submit", async function (event) {
       event.preventDefault();
-      const result = typeof settings.onSubmit === "function" ? settings.onSubmit(new FormData(event.target), event.target) : true;
-      if (result !== false) {
-        close();
+      const form = event.target;
+      const submitButton = form.querySelector('[type="submit"]');
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+      try {
+        const result =
+          typeof settings.onSubmit === "function"
+            ? await settings.onSubmit(new FormData(form), form)
+            : true;
+        if (result !== false) {
+          close();
+        }
+      } catch (error) {
+        setFormError(form, error.message || "Data gagal disimpan melalui API.");
+      } finally {
+        if (submitButton && overlay.isConnected) {
+          submitButton.disabled = false;
+        }
       }
     });
     document.addEventListener("keydown", onKeydown);
@@ -786,7 +793,7 @@
 
   function renderKpiCard(options) {
     return [
-      '<article class="app-card p-5">',
+      '<article class="app-card p-5 sm:p-6">',
       '<div class="flex items-start justify-between gap-4">',
       '<div><p class="text-sm font-semibold text-neutral-600">',
       html(options.label),
@@ -960,7 +967,7 @@
       '<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">',
       '<div><p class="text-sm font-semibold text-primary-600">Perlu Tindakan</p>',
       '<h2 id="action-heading" class="mt-2 text-2xl font-black text-neutral-900">Prioritas operasional hari ini</h2></div>',
-      '<p class="text-sm leading-6 text-neutral-600">Dihitung dari status service, pembayaran, assignment, dan stok dummy.</p>',
+      '<p class="text-sm leading-6 text-neutral-600">Dihitung dari status service, pembayaran, assignment, dan stok database.</p>',
       "</div>",
       '<div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">',
       items
@@ -968,7 +975,7 @@
           return [
             '<article id="',
             html(item.id),
-            '" class="scroll-mt-24 rounded-2xl border p-4 ',
+            '" class="scroll-mt-24 rounded-2xl border p-5 ',
             html(item.tone),
             '">',
             '<div class="flex items-center justify-between gap-3">',
@@ -1031,9 +1038,9 @@
         })
         .join(""),
       "</div>",
-      '<div class="mt-6 overflow-x-auto rounded-2xl border border-neutral-200">',
-      '<table class="min-w-full divide-y divide-neutral-200 text-sm">',
-      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th class="px-4 py-3">Status</th><th class="px-4 py-3">Jumlah</th></tr></thead>',
+      '<div class="admin-table-shell mt-6 rounded-2xl border border-neutral-200">',
+      '<table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
+      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th scope="col">Status</th><th scope="col">Jumlah</th></tr></thead>',
       '<tbody class="divide-y divide-neutral-200 bg-white">',
       config.serviceStatuses
         .map(function (status) {
@@ -1222,7 +1229,7 @@
 
   function renderReportMetricCard(options) {
     return [
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">',
+      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">',
       '<div class="flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-neutral-600">',
       html(options.label),
       '</p><p class="mt-3 text-2xl font-black tabular-nums text-neutral-900">',
@@ -1240,7 +1247,7 @@
 
   function renderReportKpis(report) {
     return [
-      '<div class="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">',
+      '<div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">',
       renderReportMetricCard({
         label: "Service masuk",
         value: String(report.receivedServices.length),
@@ -1304,7 +1311,7 @@
   function renderReportFilters(report) {
     const customHidden = filters.reportPreset === "custom" ? "" : " md:opacity-60";
     return [
-      '<form class="report-controls grid gap-3 border-b border-neutral-200 bg-white p-5 md:grid-cols-2 xl:grid-cols-5" data-filter-form="report">',
+      '<form class="report-controls grid gap-3 border-b border-neutral-200 bg-white p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-5" data-filter-form="report">',
       filterSelect(
         "reportPreset",
         "Periode",
@@ -1344,7 +1351,7 @@
     );
 
     return [
-      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5">',
+      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">',
       '<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">',
       '<div><p class="text-sm font-semibold text-primary-600">Status breakdown</p>',
       '<h3 class="mt-2 text-xl font-black text-neutral-900">Distribusi service masuk periode ini</h3></div>',
@@ -1368,8 +1375,8 @@
         })
         .join(""),
       "</div>",
-      '<div class="mt-5 overflow-x-auto rounded-2xl border border-neutral-200"><table class="min-w-full divide-y divide-neutral-200 text-sm">',
-      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th class="px-4 py-3">Status</th><th class="px-4 py-3">Jumlah</th></tr></thead>',
+      '<div class="admin-table-shell mt-5 rounded-2xl border border-neutral-200"><table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
+      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th scope="col">Status</th><th scope="col">Jumlah</th></tr></thead>',
       '<tbody class="divide-y divide-neutral-200 bg-white">',
       config.serviceStatuses
         .map(function (status) {
@@ -1382,11 +1389,11 @@
 
   function renderTechnicianReport(report) {
     return [
-      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5">',
+      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">',
       '<p class="text-sm font-semibold text-primary-600">Performa teknisi</p>',
       '<h3 class="mt-2 text-xl font-black text-neutral-900">Assignment dan service selesai</h3>',
-      '<div class="mt-5 overflow-x-auto rounded-2xl border border-neutral-200"><table class="min-w-[720px] w-full divide-y divide-neutral-200 text-sm">',
-      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th class="px-4 py-3">Teknisi</th><th class="px-4 py-3">Aktif</th><th class="px-4 py-3">Selesai/Diambil</th><th class="px-4 py-3">Rata-rata durasi</th></tr></thead>',
+      '<div class="admin-table-shell mt-5 rounded-2xl border border-neutral-200"><table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
+      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th scope="col">Teknisi</th><th scope="col">Aktif</th><th scope="col">Selesai/Diambil</th><th scope="col">Rata-rata durasi</th></tr></thead>',
       '<tbody class="divide-y divide-neutral-200 bg-white">',
       report.technicianPerformance
         .map(function (item) {
@@ -1427,11 +1434,11 @@
       : emptyRow(3, "Belum ada sparepart terpakai pada periode ini.");
 
     return [
-      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5">',
+      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">',
       '<p class="text-sm font-semibold text-primary-600">Sparepart terpakai</p>',
       '<h3 class="mt-2 text-xl font-black text-neutral-900">Komponen paling sering digunakan</h3>',
-      '<div class="mt-5 overflow-x-auto rounded-2xl border border-neutral-200"><table class="min-w-[560px] w-full divide-y divide-neutral-200 text-sm">',
-      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th class="px-4 py-3">Sparepart</th><th class="px-4 py-3">Qty</th><th class="px-4 py-3">Service</th></tr></thead>',
+      '<div class="admin-table-shell mt-5 rounded-2xl border border-neutral-200"><table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
+      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th scope="col">Sparepart</th><th scope="col">Qty</th><th scope="col">Service</th></tr></thead>',
       '<tbody class="divide-y divide-neutral-200 bg-white">',
       rows,
       "</tbody></table></div></article>"
@@ -1469,11 +1476,11 @@
       : emptyRow(7, "Tidak ada transaksi yang masuk aturan pendapatan pada periode ini.");
 
     return [
-      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5">',
+      '<article class="report-print-break-inside rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 xl:col-span-2">',
       '<p class="text-sm font-semibold text-primary-600">Tabel transaksi</p>',
       '<h3 class="mt-2 text-xl font-black text-neutral-900">Pendapatan service selesai/diambil</h3>',
-      '<div class="mt-5 overflow-x-auto rounded-2xl border border-neutral-200"><table class="min-w-[980px] w-full divide-y divide-neutral-200 text-sm">',
-      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th class="px-4 py-3">Resi/Pelanggan</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Metode</th><th class="px-4 py-3 text-right">Jasa</th><th class="px-4 py-3 text-right">Sparepart</th><th class="px-4 py-3 text-right">Diskon</th><th class="px-4 py-3 text-right">Total</th></tr></thead>',
+      '<div class="admin-table-shell mt-5 rounded-2xl border border-neutral-200"><table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
+      '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th scope="col">Resi/Pelanggan</th><th scope="col">Status</th><th scope="col">Metode</th><th scope="col" class="text-right">Jasa</th><th scope="col" class="text-right">Sparepart</th><th scope="col" class="text-right">Diskon</th><th scope="col" class="text-right">Total</th></tr></thead>',
       '<tbody class="divide-y divide-neutral-200 bg-white">',
       rows,
       "</tbody></table></div></article>"
@@ -1499,7 +1506,7 @@
       html(periodText),
       ". Data dihitung dari state frontend yang tersedia di browser.</p></div>",
       renderReportKpis(report),
-      '<div class="grid gap-5 p-5 xl:grid-cols-2">',
+      '<div class="grid gap-5 p-5 sm:p-6 xl:grid-cols-2">',
       renderReportStatusBreakdown(report),
       renderTechnicianReport(report),
       renderPartUsageReport(report),
@@ -1662,8 +1669,7 @@
       ]),
       tableWrap(
         ["Resi", "Pelanggan", "Perangkat", "Status", "Teknisi", "Pembayaran", "Sparepart", "Aksi"],
-        [tableRows],
-        "1080px"
+        [tableRows]
       ),
       moduleFooter(rows.length, state.serviceOrders.length)
     ].join("");
@@ -1672,7 +1678,7 @@
       id: "service",
       eyebrow: "Operasional",
       title: "Service Masuk",
-      description: "Kelola tiket service, assignment teknisi, status, pemakaian sparepart, dan preview resi secara simulatif.",
+      description: "Kelola tiket service, assignment teknisi, status, pemakaian sparepart, dan preview tracking publik.",
       actionHtml: actionButton("Tambah Service", "new-service", "", "primary"),
       body
     });
@@ -1721,7 +1727,7 @@
 
     const body = [
       renderFilterForm("customer", [filterInput("customerSearch", "Cari pelanggan", filters.customerSearch, "Nama, WhatsApp, alamat")]),
-      tableWrap(["Nama", "WhatsApp", "Alamat", "Riwayat", "Aksi"], [tableRows], "760px"),
+      tableWrap(["Nama", "WhatsApp", "Alamat", "Riwayat", "Aksi"], [tableRows]),
       moduleFooter(rows.length, state.customers.length)
     ].join("");
 
@@ -1729,7 +1735,7 @@
       id: "pelanggan",
       eyebrow: "Master data",
       title: "Pelanggan",
-      description: "Profil pelanggan dummy untuk service dan riwayat perangkat.",
+      description: "Profil pelanggan dari API untuk service dan riwayat perangkat.",
       actionHtml: actionButton("Tambah Pelanggan", "new-customer", "", "primary"),
       body
     });
@@ -1779,7 +1785,7 @@
 
     const body = [
       renderFilterForm("device", [filterInput("deviceSearch", "Cari perangkat", filters.deviceSearch, "Merk, tipe, IMEI, resi")]),
-      tableWrap(["Perangkat", "Pelanggan", "IMEI", "Resi", "Status", "Aksi"], [tableRows], "860px"),
+      tableWrap(["Perangkat", "Pelanggan", "IMEI", "Resi", "Status", "Aksi"], [tableRows]),
       moduleFooter(rows.length, state.serviceOrders.length)
     ].join("");
 
@@ -1854,7 +1860,7 @@
             option("INACTIVE", "Nonaktif", filters.damageActive)
         )
       ]),
-      tableWrap(["Nama", "Durasi", "Kisaran Biaya", "Status", "Dipakai", "Aksi"], [tableRows], "860px"),
+      tableWrap(["Nama", "Durasi", "Kisaran Biaya", "Status", "Dipakai", "Aksi"], [tableRows]),
       moduleFooter(rows.length, state.damageTypes.length)
     ].join("");
 
@@ -1926,7 +1932,7 @@
             option("Busy", "Busy", filters.technicianAvailability)
         )
       ]),
-      tableWrap(["Nama", "Keahlian", "Status", "Aktif", "Selesai", "Rata-rata", "Aksi"], [tableRows], "920px"),
+      tableWrap(["Nama", "Keahlian", "Status", "Aktif", "Selesai", "Rata-rata", "Aksi"], [tableRows]),
       moduleFooter(rows.length, state.technicians.length)
     ].join("");
 
@@ -1944,7 +1950,7 @@
     return state.parts.filter(function (part) {
       const searchOk =
         !filters.partSearch ||
-        matchesText([part.sku, part.name, part.category, part.compatibility, part.supplier].join(" "), filters.partSearch);
+        matchesText([part.sku, part.name].join(" "), filters.partSearch);
       const stockTone = getStockTone(part).label;
       const stockOk = filters.partStock === "ALL" || stockTone === filters.partStock;
       return searchOk && stockOk;
@@ -1972,12 +1978,6 @@
               '<p class="mt-1 text-xs font-normal text-neutral-500">',
               html(part.name),
               "</p></td>",
-              '<td class="px-4 py-4 text-neutral-700">',
-              html(part.category),
-              "</td>",
-              '<td class="px-4 py-4 text-neutral-700">',
-              html(part.compatibility),
-              "</td>",
               '<td class="px-4 py-4 font-bold tabular-nums text-neutral-900">',
               html(part.stock),
               " / ",
@@ -2005,11 +2005,11 @@
             ].join("");
           })
           .join("")
-      : emptyRow(9, "Tidak ada sparepart yang cocok.");
+      : emptyRow(7, "Tidak ada sparepart yang cocok.");
 
     const body = [
       renderFilterForm("part", [
-        filterInput("partSearch", "Cari sparepart", filters.partSearch, "SKU, nama, kategori"),
+        filterInput("partSearch", "Cari sparepart", filters.partSearch, "SKU atau nama"),
         filterSelect(
           "partStock",
           "Status stok",
@@ -2020,9 +2020,8 @@
         )
       ]),
       tableWrap(
-        ["SKU/Nama", "Kategori", "Kompatibilitas", "Stok/Min", "Status", "Harga Modal", "Harga Jasa", "Terpakai", "Aksi"],
-        [tableRows],
-        "1180px"
+        ["SKU/Nama", "Stok/Min", "Status", "Harga Modal", "Harga Jasa", "Terpakai", "Aksi"],
+        [tableRows]
       ),
       moduleFooter(rows.length, state.parts.length)
     ].join("");
@@ -2120,8 +2119,7 @@
       ]),
       tableWrap(
         ["ID/Resi", "Pelanggan", "Metode", "Status", "Jasa", "Sparepart", "Diskon", "Total", "Dibayar", "Aksi"],
-        [tableRows],
-        "1200px"
+        [tableRows]
       ),
       moduleFooter(rows.length, state.payments.length)
     ].join("");
@@ -2139,32 +2137,32 @@
   function renderSettingsModule(state) {
     const edgeCoverage = getEdgeCoverage(state);
     const body = [
-      '<div class="grid gap-4 p-5 md:grid-cols-3">',
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">',
-      '<p class="text-sm font-semibold text-neutral-600">Storage key</p><p class="mt-2 break-all text-sm font-bold text-neutral-900">',
-      html(config.storage.key),
+      '<div class="grid gap-4 p-5 sm:p-6 md:grid-cols-3">',
+      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">',
+      '<p class="text-sm font-semibold text-neutral-600">Endpoint API</p><p class="mt-2 break-all text-sm font-bold text-neutral-900">',
+      html(window.PMD_API.getBaseUrl()),
       "</p></article>",
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">',
+      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">',
       '<p class="text-sm font-semibold text-neutral-600">Jumlah data runtime</p><p class="mt-2 text-sm font-bold text-neutral-900">',
       html(state.customers.length + " pelanggan, " + state.serviceOrders.length + " service, " + state.parts.length + " sparepart"),
       "</p></article>",
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">',
-      '<p class="text-sm font-semibold text-neutral-600">Mode</p><p class="mt-2 text-sm font-bold text-neutral-900">Frontend-only localStorage</p></article>',
+      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">',
+      '<p class="text-sm font-semibold text-neutral-600">Mode</p><p class="mt-2 text-sm font-bold text-neutral-900">REST API + MySQL</p></article>',
       "</div>",
       renderEdgeCoverage(edgeCoverage),
-      '<div class="border-t border-neutral-200 p-5">',
-      '<p class="max-w-3xl text-sm leading-6 text-neutral-600">Reset mengembalikan seluruh seed dummy deterministik pada browser.</p>',
+      '<div class="border-t border-neutral-200 p-5 sm:p-6">',
+      '<p class="max-w-3xl text-sm leading-6 text-neutral-600">Muat ulang mengambil state terbaru langsung dari backend tanpa mengubah data.</p>',
       '<div class="mt-4 flex flex-wrap gap-3">',
-      actionButton("Reset Dummy Data", "reset-data", "", "danger"),
+      actionButton("Muat Ulang Data", "reset-data", "", "primary"),
       '<a class="inline-flex min-h-10 items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-900 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" href="tracking.html?resi=PMD-20260714-0001">Tes Tracking</a>',
       "</div></div>"
     ].join("");
 
     return renderModuleShell({
       id: "pengaturan",
-      eyebrow: "Demo state",
+      eyebrow: "Koneksi sistem",
       title: "Pengaturan",
-      description: "Kontrol prototype lokal untuk reset data dan verifikasi flow demo.",
+      description: "Informasi endpoint, data runtime, dan pemeriksaan cakupan data API.",
       body
     });
   }
@@ -2300,19 +2298,19 @@
         detail: longContent ? longContent.receipt : "Belum tersedia"
       },
       {
-        label: "Reset seed tersedia",
-        passed: typeof store.reset === "function",
-        detail: "Tombol reset mengembalikan data demo lokal"
+        label: "Refresh API tersedia",
+        passed: typeof store.refresh === "function",
+        detail: "Dashboard dapat mengambil ulang state backend"
       }
     ];
   }
 
   function renderEdgeCoverage(items) {
     return [
-      '<section class="border-t border-neutral-200 p-5" aria-labelledby="edge-coverage-heading">',
+      '<section class="border-t border-neutral-200 p-5 sm:p-6" aria-labelledby="edge-coverage-heading">',
       '<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">',
-      '<div><h3 id="edge-coverage-heading" class="text-base font-black text-neutral-900">Coverage data demo</h3>',
-      '<p class="mt-1 text-sm leading-6 text-neutral-600">Checklist ini membantu memverifikasi seed, edge state, dan reset pada Phase 8.</p></div>',
+      '<div><h3 id="edge-coverage-heading" class="text-base font-black text-neutral-900">Coverage data API</h3>',
+      '<p class="mt-1 text-sm leading-6 text-neutral-600">Checklist ini memeriksa variasi data operasional yang diterima dari backend.</p></div>',
       '<span class="inline-flex min-h-7 w-fit items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-bold text-green-700">',
       html(items.filter(function (item) {
         return item.passed;
@@ -2327,7 +2325,7 @@
             ? "border-green-200 bg-green-50 text-green-700"
             : "border-red-200 bg-red-50 text-red-700";
           return [
-            '<article class="rounded-2xl border border-neutral-200 bg-white p-4">',
+            '<article class="rounded-2xl border border-neutral-200 bg-white p-5">',
             '<div class="flex items-start justify-between gap-3">',
             '<p class="text-sm font-bold text-neutral-900">',
             html(item.label),
@@ -2354,10 +2352,10 @@
       '<section id="dashboard" class="flex scroll-mt-24 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" aria-labelledby="dashboard-heading">',
       '<div><p class="text-sm font-semibold text-primary-600">Operasional admin</p>',
       '<h2 id="dashboard-heading" class="mt-2 text-3xl font-black text-neutral-900">Ringkasan service Papuans Manado</h2>',
-      '<p class="mt-3 max-w-3xl text-sm leading-6 text-neutral-600">Angka dashboard dihitung dari data dummy lokal dan mengikuti status canonical service.</p></div>',
+      '<p class="mt-3 max-w-3xl text-sm leading-6 text-neutral-600">Angka dashboard dihitung dari data API dan mengikuti status canonical service.</p></div>',
       '<div class="flex flex-wrap gap-2">',
       actionButton("Tambah Service", "new-service", "", "primary"),
-      actionButton("Reset Data", "reset-data", "", "secondary"),
+      actionButton("Muat Ulang", "reset-data", "", "secondary"),
       "</div></section>",
       renderKpiGrid(state, metrics),
       renderActionPanel(state, metrics)
@@ -2441,6 +2439,7 @@
       content
     });
     syncActiveMenu();
+    enhanceAdminTables();
   }
 
   function getActiveMenuId() {
@@ -2460,7 +2459,7 @@
       });
       const active = item && item.id === activeId;
       link.className =
-        "flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold transition " +
+        "flex min-h-12 items-center rounded-xl px-4 text-sm font-semibold transition " +
         (active ? "bg-primary-500 text-white" : "text-white/75 hover:bg-white/10 hover:text-white");
       if (active) {
         link.setAttribute("aria-current", "page");
@@ -2653,7 +2652,7 @@
     }
   }
 
-  function handleChange(event) {
+  async function handleChange(event) {
     const assign = event.target.closest("[data-service-technician]");
     if (!assign) {
       return;
@@ -2661,22 +2660,16 @@
 
     const serviceId = assign.getAttribute("data-service-technician");
     const technicianId = assign.value || null;
-    store.update(function (draft) {
-      const service = draft.serviceOrders.find(function (item) {
-        return item.id === serviceId;
-      });
-      if (!service) {
-        return;
-      }
-      service.technicianId = technicianId;
-      addTimeline(
-        draft,
-        service,
-        service.status,
-        technicianId ? "Teknisi diassign ke " + getTechnicianName(draft, technicianId) + "." : "Assignment teknisi dikosongkan."
-      );
-    });
-    showSuccess("Assignment teknisi diperbarui.");
+    assign.disabled = true;
+    try {
+      await store.assignTechnician(serviceId, technicianId);
+      showSuccess("Assignment teknisi diperbarui melalui API.");
+    } catch (error) {
+      showError(error.message || "Assignment teknisi gagal diperbarui.");
+      renderApp();
+    } finally {
+      assign.disabled = false;
+    }
   }
 
   function openServiceForm(id) {
@@ -2695,11 +2688,9 @@
       inputField("IMEI opsional", "imei", service ? service.device.imei : "", { helper: "Boleh dikosongkan. IMEI bukan identifier utama frontend." }),
       selectField("Teknisi", "technicianId", technicianOptions(state, service ? service.technicianId || "" : "", false, true)),
       selectField("Prioritas", "priority", option("Normal", "Normal", service ? service.priority : "Normal") + option("Tinggi", "Tinggi", service ? service.priority : "Normal")),
-      selectField("Status", "status", statusOptions(service ? service.status : "DITERIMA", false), { required: true }),
+      selectField("Status", "status", workflowStatusOptions(service ? service.status : null), { required: true }),
       inputField("Estimasi biaya", "estimatedCost", service && service.estimatedCost ? service.estimatedCost : "", { type: "number", min: "0", helper: "Rupiah tanpa desimal." }),
       inputField("Estimasi selesai", "estimatedDoneAt", service && service.estimatedDoneAt ? toDateKey(service.estimatedDoneAt) : "", { type: "date" }),
-      inputField("Kelengkapan", "accessories", service && service.accessories ? service.accessories : "", { placeholder: "Unit, SIM tray, dus, dll." }),
-      inputField("Foto kondisi awal simulatif", "initialPhotoFileName", service && service.initialPhotoFileName ? service.initialPhotoFileName : "", { helper: "Nama file dummy untuk dokumentasi internal." }),
       "</div>",
       '<div class="mt-4 grid gap-4 md:grid-cols-2">',
       textareaField("Keluhan", "complaint", service ? service.complaint : "", { required: true }),
@@ -2711,10 +2702,10 @@
 
     openModal({
       title: isEdit ? "Edit Service" : "Tambah Service",
-      description: isEdit ? "Perubahan status akan menambah timeline simulatif." : "Resi dibuat otomatis dari tanggal demo terbaru.",
+      description: isEdit ? "Perubahan status mengikuti alur canonical API dan menambah timeline." : "Resi dan ID dibuat otomatis oleh API.",
       body,
       confirmText: isEdit ? "Simpan Service" : "Buat Service",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const customerId = String(data.get("customerId") || "");
         const damageTypeId = String(data.get("damageTypeId") || "");
         const brand = String(data.get("brand") || "").trim();
@@ -2727,72 +2718,27 @@
           return false;
         }
 
-        store.update(function (draft) {
-          if (isEdit) {
-            const current = draft.serviceOrders.find(function (item) {
-              return item.id === id;
-            });
-            if (!current) {
-              return;
-            }
-            const previousStatus = current.status;
-            Object.assign(current, {
-              customerId,
-              damageTypeId,
-              technicianId: data.get("technicianId") || null,
-              status,
-              priority: data.get("priority") || "Normal",
-              estimatedCost: data.get("estimatedCost") ? toNumber(data.get("estimatedCost")) : null,
-              estimatedDoneAt: data.get("estimatedDoneAt") ? data.get("estimatedDoneAt") + "T17:00:00" : null,
-              accessories: String(data.get("accessories") || "").trim(),
-              complaint,
-              initialCondition: String(data.get("initialCondition") || "").trim(),
-              initialPhotoFileName: String(data.get("initialPhotoFileName") || "").trim(),
-              safeDiagnosis: String(data.get("safeDiagnosis") || "").trim(),
-              internalNote: String(data.get("internalNote") || "").trim(),
-              device: {
-                brand,
-                model,
-                color: String(data.get("color") || "").trim(),
-                imei: String(data.get("imei") || "").trim()
-              }
-            });
-            applyStatusTimestamp(current, status);
-            if (previousStatus !== status) {
-              addTimeline(draft, current, status, "Admin mengubah status dari " + getStatusLabel(previousStatus) + " ke " + getStatusLabel(status) + ".");
-            }
-          } else {
-            const next = {
-              id: generateId(draft.serviceOrders, "SVC"),
-              receipt: generateReceipt(draft),
-              customerId,
-              device: {
-                brand,
-                model,
-                color: String(data.get("color") || "").trim(),
-                imei: String(data.get("imei") || "").trim()
-              },
-              complaint,
-              damageTypeId,
-              technicianId: data.get("technicianId") || null,
-              status,
-              priority: data.get("priority") || "Normal",
-              estimatedCost: data.get("estimatedCost") ? toNumber(data.get("estimatedCost")) : null,
-              estimatedDoneAt: data.get("estimatedDoneAt") ? data.get("estimatedDoneAt") + "T17:00:00" : null,
-              receivedAt: new Date().toISOString(),
-              initialCondition: String(data.get("initialCondition") || "").trim(),
-              initialPhotoFileName: String(data.get("initialPhotoFileName") || "").trim(),
-              accessories: String(data.get("accessories") || "").trim(),
-              internalNote: String(data.get("internalNote") || "").trim(),
-              safeDiagnosis: String(data.get("safeDiagnosis") || "Menunggu pemeriksaan awal.").trim(),
-              partUsages: []
-            };
-            draft.serviceOrders.push(next);
-            applyStatusTimestamp(next, status);
-            addTimeline(draft, next, status, "Service dibuat oleh admin.");
+        await store.saveService(id || null, {
+          customerId,
+          damageTypeId,
+          technicianId: data.get("technicianId") || null,
+          status,
+          priority: data.get("priority") || "Normal",
+          estimatedCost: data.get("estimatedCost") ? toNumber(data.get("estimatedCost")) : null,
+          estimatedDoneAt: data.get("estimatedDoneAt") ? data.get("estimatedDoneAt") + "T17:00:00" : null,
+          receivedAt: service ? service.receivedAt : new Date().toISOString(),
+          complaint,
+          initialCondition: String(data.get("initialCondition") || "").trim(),
+          safeDiagnosis: String(data.get("safeDiagnosis") || "Menunggu pemeriksaan awal.").trim(),
+          internalNote: String(data.get("internalNote") || "").trim(),
+          device: {
+            brand,
+            model,
+            color: String(data.get("color") || "").trim(),
+            imei: String(data.get("imei") || "").trim()
           }
         });
-        showSuccess(isEdit ? "Service diperbarui." : "Service baru dibuat.");
+        showSuccess(isEdit ? "Service diperbarui melalui API." : "Service baru dibuat melalui API.");
         return true;
       }
     });
@@ -2817,14 +2763,14 @@
       });
     const body = [
       '<div class="grid gap-4 md:grid-cols-2">',
-      '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Pelanggan</p><p class="mt-2 font-bold text-neutral-900">',
+      '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Pelanggan</p><p class="mt-2 font-bold text-neutral-900">',
       html(getCustomerName(state, service.customerId)),
       '</p><p class="mt-1 text-sm text-neutral-600">',
       html(getDeviceName(service)),
       " - ",
       html(service.device.color || "-"),
       "</p></article>",
-      '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Status dan biaya</p><div class="mt-2">',
+      '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Status dan biaya</p><div class="mt-2">',
       components.statusBadge(service.status),
       '</div><p class="mt-2 text-sm text-neutral-600">',
       html(components.formatRupiah(service.finalCost || service.estimatedCost || 0)),
@@ -2833,18 +2779,18 @@
       "</p></article>",
       "</div>",
       '<div class="mt-4 grid gap-4 md:grid-cols-2">',
-      '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Keluhan</p><p class="mt-2 text-sm leading-6 text-neutral-700">',
+      '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Keluhan</p><p class="mt-2 text-sm leading-6 text-neutral-700">',
       html(service.complaint),
       '</p><p class="mt-3 text-xs font-bold text-neutral-500">Diagnosis aman</p><p class="mt-2 text-sm leading-6 text-neutral-700">',
       html(service.safeDiagnosis || "-"),
       "</p></article>",
-      '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Sparepart</p><p class="mt-2 text-sm leading-6 text-neutral-700">',
+      '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Sparepart</p><p class="mt-2 text-sm leading-6 text-neutral-700">',
       html(getPartUsageSummary(state, service)),
       '</p><p class="mt-3 text-xs font-bold text-neutral-500">Catatan internal</p><p class="mt-2 text-sm leading-6 text-neutral-700">',
       html(service.internalNote || "-"),
       "</p></article>",
       "</div>",
-      '<div class="mt-4 rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Timeline</p><ul class="mt-3 space-y-3">',
+      '<div class="mt-4 rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Timeline</p><ul class="mt-3 space-y-3">',
       timeline
         .map(function (entry) {
           return [
@@ -2877,22 +2823,12 @@
 
     components.confirmAction({
       title: "Hapus service?",
-      message: "Tiket " + service.receipt + " beserta timeline dan pembayaran terkait akan dihapus dari state browser.",
+      message: "Tiket " + service.receipt + " beserta timeline, pemakaian sparepart, dan pembayaran terkait akan dihapus dari database.",
       confirmText: "Hapus",
       variant: "danger",
-      onConfirm: function () {
-        store.update(function (draft) {
-          draft.serviceOrders = draft.serviceOrders.filter(function (item) {
-            return item.id !== id;
-          });
-          draft.timelines = draft.timelines.filter(function (item) {
-            return item.serviceId !== id;
-          });
-          draft.payments = draft.payments.filter(function (item) {
-            return item.serviceId !== id;
-          });
-        });
-        showSuccess("Service dihapus.");
+      onConfirm: async function () {
+        await store.deleteService(id);
+        showSuccess("Service dihapus dari database.");
       }
     });
   }
@@ -2916,7 +2852,7 @@
       description: "Stok akan berkurang sesuai jumlah yang dipakai.",
       body,
       confirmText: "Catat Pemakaian",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const selectedServiceId = String(data.get("serviceId") || "");
         const partId = String(data.get("partId") || "");
         const qty = toPositiveInt(data.get("qty"));
@@ -2933,34 +2869,13 @@
           return false;
         }
 
-        store.update(function (draft) {
-          const draftService = draft.serviceOrders.find(function (item) {
-            return item.id === selectedServiceId;
-          });
-          const draftPart = draft.parts.find(function (part) {
-            return part.id === partId;
-          });
-          if (!draftService || !draftPart || draftPart.stock < qty) {
-            return;
-          }
-          draftPart.stock -= qty;
-          draftService.partUsages = draftService.partUsages || [];
-          const existingUsage = draftService.partUsages.find(function (usage) {
-            return usage.partId === partId;
-          });
-          if (existingUsage) {
-            existingUsage.qty += qty;
-          } else {
-            draftService.partUsages.push({ partId, qty });
-          }
-          addTimeline(
-            draft,
-            draftService,
-            draftService.status,
-            "Pemakaian sparepart " + draftPart.sku + " x" + qty + ". " + String(data.get("note") || "").trim()
-          );
-        });
-        showSuccess("Pemakaian sparepart dicatat dan stok diperbarui.");
+        await store.recordPartUsage(
+          selectedServiceId,
+          partId,
+          qty,
+          String(data.get("note") || "").trim()
+        );
+        showSuccess("Pemakaian sparepart dicatat dan stok API diperbarui.");
         return true;
       }
     });
@@ -2974,7 +2889,7 @@
       inputField("Nama", "name", customer ? customer.name : "", { required: true }),
       inputField("WhatsApp", "whatsapp", customer ? customer.whatsapp : "", {
         required: true,
-        helper: "Gunakan nomor dummy Indonesia, contoh 081234567890."
+        helper: "Gunakan nomor Indonesia, contoh 081234567890."
       }),
       inputField("Alamat", "address", customer ? customer.address : "", { required: true }),
       "</div>"
@@ -2985,31 +2900,16 @@
       description: "Data pelanggan dipakai sebagai relasi tiket service.",
       body,
       confirmText: "Simpan Pelanggan",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const name = String(data.get("name") || "").trim();
         const whatsapp = String(data.get("whatsapp") || "").trim();
         const address = String(data.get("address") || "").trim();
         if (!name || !/^08\d{8,13}$/.test(whatsapp) || !address) {
-          setFormError(form, "Nama, nomor WhatsApp dummy valid, dan alamat wajib diisi.");
+          setFormError(form, "Nama, nomor WhatsApp valid, dan alamat wajib diisi.");
           return false;
         }
-        store.update(function (draft) {
-          if (customer) {
-            const current = draft.customers.find(function (item) {
-              return item.id === id;
-            });
-            Object.assign(current, { name, whatsapp, address });
-          } else {
-            draft.customers.push({
-              id: generateId(draft.customers, "CUS"),
-              name,
-              whatsapp,
-              address,
-              createdAt: new Date().toISOString()
-            });
-          }
-        });
-        showSuccess("Pelanggan disimpan.");
+        await store.saveCustomer(id || null, { name, whatsapp, address });
+        showSuccess("Pelanggan disimpan melalui API.");
         return true;
       }
     });
@@ -3030,12 +2930,12 @@
       customer.name,
       [
         '<div class="grid gap-4 md:grid-cols-2">',
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Kontak</p><p class="mt-2 font-bold text-neutral-900">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Kontak</p><p class="mt-2 font-bold text-neutral-900">',
         html(customer.whatsapp),
         '</p><p class="mt-1 text-sm text-neutral-600">',
         html(customer.address),
         "</p></article>",
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Riwayat service</p><p class="mt-2 text-3xl font-black text-neutral-900">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Riwayat service</p><p class="mt-2 text-3xl font-black text-neutral-900">',
         html(history.length),
         "</p></article>",
         "</div>",
@@ -3066,16 +2966,12 @@
     }
     components.confirmAction({
       title: "Hapus pelanggan?",
-      message: "Data pelanggan " + customer.name + " akan dihapus dari state browser.",
+      message: "Data pelanggan " + customer.name + " akan dihapus dari database.",
       confirmText: "Hapus",
       variant: "danger",
-      onConfirm: function () {
-        store.update(function (draft) {
-          draft.customers = draft.customers.filter(function (item) {
-            return item.id !== id;
-          });
-        });
-        showSuccess("Pelanggan dihapus.");
+      onConfirm: async function () {
+        await store.deleteCustomer(id);
+        showSuccess("Pelanggan dihapus dari database.");
       }
     });
   }
@@ -3103,25 +2999,20 @@
       description: service.receipt + " - " + getCustomerName(state, service.customerId),
       body,
       confirmText: "Simpan Perangkat",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const brand = String(data.get("brand") || "").trim();
         const model = String(data.get("model") || "").trim();
         if (!brand || !model) {
           setFormError(form, "Merk dan tipe perangkat wajib diisi.");
           return false;
         }
-        store.update(function (draft) {
-          const current = draft.serviceOrders.find(function (item) {
-            return item.id === serviceId;
-          });
-          current.device = {
-            brand,
-            model,
-            color: String(data.get("color") || "").trim(),
-            imei: String(data.get("imei") || "").trim()
-          };
+        await store.saveDevice(serviceId, {
+          brand,
+          model,
+          color: String(data.get("color") || "").trim(),
+          imei: String(data.get("imei") || "").trim()
         });
-        showSuccess("Perangkat diperbarui.");
+        showSuccess("Perangkat diperbarui melalui API.");
         return true;
       }
     });
@@ -3141,12 +3032,12 @@
       service.receipt,
       [
         '<div class="grid gap-4 md:grid-cols-2">',
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Perangkat</p><p class="mt-2 font-bold text-neutral-900">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Perangkat</p><p class="mt-2 font-bold text-neutral-900">',
         html(getDeviceName(service)),
         '</p><p class="mt-1 text-sm text-neutral-600">',
         html(service.device.color || "-"),
         "</p></article>",
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Riwayat service</p><p class="mt-2 text-sm text-neutral-700">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Riwayat service</p><p class="mt-2 text-sm text-neutral-700">',
         html(service.complaint),
         "</p></article>",
         "</div>"
@@ -3171,7 +3062,7 @@
       description: "Kategori kerusakan untuk form service.",
       body,
       confirmText: "Simpan Jenis",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const name = String(data.get("name") || "").trim();
         const estimatedDuration = String(data.get("estimatedDuration") || "").trim();
         const priceRange = String(data.get("priceRange") || "").trim();
@@ -3179,23 +3070,13 @@
           setFormError(form, "Nama, estimasi durasi, dan kisaran biaya wajib diisi.");
           return false;
         }
-        store.update(function (draft) {
-          if (damage) {
-            const current = draft.damageTypes.find(function (item) {
-              return item.id === id;
-            });
-            Object.assign(current, { name, estimatedDuration, priceRange, active: Boolean(data.get("active")) });
-          } else {
-            draft.damageTypes.push({
-              id: generateId(draft.damageTypes, "DMG"),
-              name,
-              estimatedDuration,
-              priceRange,
-              active: Boolean(data.get("active"))
-            });
-          }
+        await store.saveDamage(id || null, {
+          name,
+          estimatedDuration,
+          priceRange,
+          active: Boolean(data.get("active"))
         });
-        showSuccess("Jenis kerusakan disimpan.");
+        showSuccess("Jenis kerusakan disimpan melalui API.");
         return true;
       }
     });
@@ -3238,16 +3119,12 @@
     }
     components.confirmAction({
       title: "Hapus jenis kerusakan?",
-      message: damage.name + " akan dihapus dari state browser.",
+      message: damage.name + " akan dihapus dari database.",
       confirmText: "Hapus",
       variant: "danger",
-      onConfirm: function () {
-        store.update(function (draft) {
-          draft.damageTypes = draft.damageTypes.filter(function (item) {
-            return item.id !== id;
-          });
-        });
-        showSuccess("Jenis kerusakan dihapus.");
+      onConfirm: async function () {
+        await store.deleteDamage(id);
+        showSuccess("Jenis kerusakan dihapus dari database.");
       }
     });
   }
@@ -3277,7 +3154,7 @@
       description: "Teknisi dapat dipilih untuk assignment service.",
       body,
       confirmText: "Simpan Teknisi",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const name = String(data.get("name") || "").trim();
         const skills = String(data.get("skills") || "")
           .split(",")
@@ -3289,22 +3166,12 @@
           setFormError(form, "Nama dan minimal satu keahlian wajib diisi.");
           return false;
         }
-        store.update(function (draft) {
-          if (technician) {
-            const current = draft.technicians.find(function (item) {
-              return item.id === id;
-            });
-            Object.assign(current, { name, skills, availability: data.get("availability") || "Available" });
-          } else {
-            draft.technicians.push({
-              id: generateId(draft.technicians, "TEC"),
-              name,
-              skills,
-              availability: data.get("availability") || "Available"
-            });
-          }
+        await store.saveTechnician(id || null, {
+          name,
+          skills,
+          availability: data.get("availability") || "Available"
         });
-        showSuccess("Teknisi disimpan.");
+        showSuccess("Teknisi dan keahliannya disimpan melalui API.");
         return true;
       }
     });
@@ -3326,13 +3193,13 @@
       technician.name,
       [
         '<div class="grid gap-4 md:grid-cols-3">',
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Aktif</p><p class="mt-2 text-3xl font-black">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Aktif</p><p class="mt-2 text-3xl font-black">',
         html(stats.active),
         "</p></article>",
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Selesai</p><p class="mt-2 text-3xl font-black">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Selesai</p><p class="mt-2 text-3xl font-black">',
         html(stats.completed),
         "</p></article>",
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Keahlian</p><p class="mt-2 text-sm font-bold">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Keahlian</p><p class="mt-2 text-sm font-bold">',
         html(technician.skills.join(", ")),
         "</p></article>",
         "</div>",
@@ -3363,16 +3230,12 @@
     }
     components.confirmAction({
       title: "Hapus teknisi?",
-      message: technician.name + " akan dihapus dari state browser.",
+      message: technician.name + " akan dihapus dari database.",
       confirmText: "Hapus",
       variant: "danger",
-      onConfirm: function () {
-        store.update(function (draft) {
-          draft.technicians = draft.technicians.filter(function (item) {
-            return item.id !== id;
-          });
-        });
-        showSuccess("Teknisi dihapus.");
+      onConfirm: async function () {
+        await store.deleteTechnician(id);
+        showSuccess("Teknisi dihapus dari database.");
       }
     });
   }
@@ -3384,13 +3247,10 @@
       '<div class="grid gap-4 md:grid-cols-2">',
       inputField("SKU", "sku", part ? part.sku : "", { required: true }),
       inputField("Nama", "name", part ? part.name : "", { required: true }),
-      inputField("Kategori", "category", part ? part.category : "", { required: true }),
-      inputField("Kompatibilitas", "compatibility", part ? part.compatibility : "", { required: true }),
       inputField("Stok", "stock", part ? part.stock : "0", { type: "number", min: "0", required: true }),
       inputField("Minimum stok", "minStock", part ? part.minStock : "1", { type: "number", min: "0", required: true }),
-      inputField("Harga modal dummy", "costPrice", part ? part.costPrice : "0", { type: "number", min: "0", required: true }),
+      inputField("Harga modal", "costPrice", part ? part.costPrice : "0", { type: "number", min: "0", required: true }),
       inputField("Harga penggunaan jasa", "servicePrice", part ? part.servicePrice : "0", { type: "number", min: "0", required: true }),
-      inputField("Pemasok", "supplier", part ? part.supplier : "Pemasok placeholder"),
       "</div>"
     ].join("");
 
@@ -3399,51 +3259,26 @@
       description: "Sparepart digunakan sebagai komponen perbaikan internal.",
       body,
       confirmText: "Simpan Sparepart",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const sku = String(data.get("sku") || "").trim().toUpperCase();
         const name = String(data.get("name") || "").trim();
-        const category = String(data.get("category") || "").trim();
-        const compatibility = String(data.get("compatibility") || "").trim();
         const stock = Math.max(0, parseInt(data.get("stock"), 10) || 0);
         const minStock = Math.max(0, parseInt(data.get("minStock"), 10) || 0);
         const costPrice = toNumber(data.get("costPrice"));
         const servicePrice = toNumber(data.get("servicePrice"));
-        if (!sku || !name || !category || !compatibility || costPrice < 0 || servicePrice < 0) {
-          setFormError(form, "SKU, nama, kategori, kompatibilitas, dan harga wajib valid.");
+        if (!sku || !name || costPrice < 0 || servicePrice < costPrice) {
+          setFormError(form, "SKU dan nama wajib diisi. Harga penggunaan tidak boleh di bawah harga modal.");
           return false;
         }
-        store.update(function (draft) {
-          if (part) {
-            const current = draft.parts.find(function (item) {
-              return item.id === id;
-            });
-            Object.assign(current, {
-              sku,
-              name,
-              category,
-              compatibility,
-              stock,
-              minStock,
-              costPrice,
-              servicePrice,
-              supplier: String(data.get("supplier") || "").trim()
-            });
-          } else {
-            draft.parts.push({
-              id: generateId(draft.parts, "PRT"),
-              sku,
-              name,
-              category,
-              compatibility,
-              stock,
-              minStock,
-              costPrice,
-              servicePrice,
-              supplier: String(data.get("supplier") || "Pemasok placeholder").trim()
-            });
-          }
+        await store.savePart(id || null, {
+          sku,
+          name,
+          stock,
+          minStock,
+          costPrice,
+          servicePrice
         });
-        showSuccess("Sparepart disimpan.");
+        showSuccess("Sparepart disimpan melalui API.");
         return true;
       }
     });
@@ -3464,12 +3299,12 @@
       part.sku,
       [
         '<div class="grid gap-4 md:grid-cols-2">',
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Stok</p><p class="mt-2 text-3xl font-black">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Stok</p><p class="mt-2 text-3xl font-black">',
         html(part.stock),
         '</p><p class="text-sm text-neutral-600">Minimum ',
         html(part.minStock),
         "</p></article>",
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Harga</p><p class="mt-2 text-sm font-bold">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Harga</p><p class="mt-2 text-sm font-bold">',
         html(components.formatRupiah(part.costPrice) + " modal / " + components.formatRupiah(part.servicePrice) + " jasa"),
         "</p></article>",
         "</div>",
@@ -3504,16 +3339,12 @@
     }
     components.confirmAction({
       title: "Hapus sparepart?",
-      message: part.sku + " akan dihapus dari state browser.",
+      message: part.sku + " akan dihapus dari database.",
       confirmText: "Hapus",
       variant: "danger",
-      onConfirm: function () {
-        store.update(function (draft) {
-          draft.parts = draft.parts.filter(function (item) {
-            return item.id !== id;
-          });
-        });
-        showSuccess("Sparepart dihapus.");
+      onConfirm: async function () {
+        await store.deletePart(id);
+        showSuccess("Sparepart dihapus dari database.");
       }
     });
   }
@@ -3537,16 +3368,15 @@
       selectField(
         "Status pembayaran",
         "status",
-        option("Belum dibayar", "Belum dibayar", payment ? payment.status : "Belum dibayar") +
-          option("DP", "DP", payment ? payment.status : "Belum dibayar") +
-          option("Lunas", "Lunas", payment ? payment.status : "Belum dibayar"),
+        option("DP", "DP", payment ? payment.status : "DP") +
+          option("Lunas", "Lunas", payment ? payment.status : "DP"),
         { required: true }
       ),
       inputField("Biaya jasa", "serviceFee", payment ? payment.serviceFee : "0", { type: "number", min: "0", required: true }),
       inputField("Biaya sparepart", "partsFee", payment ? payment.partsFee : "0", { type: "number", min: "0", required: true }),
       inputField("Diskon", "discount", payment ? payment.discount : "0", { type: "number", min: "0" }),
       inputField("Dibayar", "paid", payment ? payment.paid : "0", { type: "number", min: "0", required: true }),
-      inputField("Nama file bukti dummy", "proofFileName", payment ? payment.proofFileName : "", { helper: "Nama file dummy untuk arsip pembayaran." }),
+      inputField("Nama file bukti", "proofFileName", payment ? payment.proofFileName : "", { helper: "Nama file referensi untuk arsip pembayaran." }),
       "</div>"
     ].join("");
 
@@ -3555,7 +3385,7 @@
       description: "Total dihitung dari biaya jasa + sparepart - diskon.",
       body,
       confirmText: "Simpan Pembayaran",
-      onSubmit: function (data, form) {
+      onSubmit: async function (data, form) {
         const serviceId = String(data.get("serviceId") || "");
         const serviceFee = toNumber(data.get("serviceFee"));
         const partsFee = toNumber(data.get("partsFee"));
@@ -3573,36 +3403,31 @@
           setFormError(form, "Service ini sudah memiliki pembayaran. Edit pembayaran yang ada.");
           return false;
         }
-        store.update(function (draft) {
-          if (payment) {
-            const current = draft.payments.find(function (item) {
-              return item.id === id;
-            });
-            Object.assign(current, {
-              serviceId,
-              method: data.get("method") || "Tunai",
-              status: data.get("status") || "Belum dibayar",
-              serviceFee,
-              partsFee,
-              discount,
-              paid,
-              proofFileName: String(data.get("proofFileName") || "").trim()
-            });
-          } else {
-            draft.payments.push({
-              id: generateId(draft.payments, "PAY"),
-              serviceId,
-              method: data.get("method") || "Tunai",
-              status: data.get("status") || "Belum dibayar",
-              serviceFee,
-              partsFee,
-              discount,
-              paid,
-              proofFileName: String(data.get("proofFileName") || "").trim()
-            });
-          }
+        const status = String(data.get("status") || "DP");
+        if (total <= 0) {
+          setFormError(form, "Total pembayaran harus lebih dari nol.");
+          return false;
+        }
+        if ((status === "Lunas" && paid !== total) || (status === "DP" && paid >= total)) {
+          setFormError(
+            form,
+            status === "Lunas"
+              ? "Status Lunas membutuhkan nominal dibayar sama dengan total."
+              : "Status DP membutuhkan nominal dibayar lebih kecil dari total."
+          );
+          return false;
+        }
+        await store.savePayment(id || null, {
+          serviceId,
+          method: data.get("method") || "Tunai",
+          status,
+          serviceFee,
+          partsFee,
+          discount,
+          paid,
+          proofFileName: String(data.get("proofFileName") || "").trim()
         });
-        showSuccess("Pembayaran disimpan. Total: " + components.formatRupiah(total) + ".");
+        showSuccess("Pembayaran disimpan melalui API. Total: " + components.formatRupiah(total) + ".");
         return true;
       }
     });
@@ -3626,12 +3451,12 @@
       payment.id,
       [
         '<div class="grid gap-4 md:grid-cols-2">',
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Service</p><p class="mt-2 font-bold text-neutral-900">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Service</p><p class="mt-2 font-bold text-neutral-900">',
         html(service ? service.receipt : "-"),
         '</p><p class="mt-1 text-sm text-neutral-600">',
         html(service ? getCustomerName(state, service.customerId) : "-"),
         "</p></article>",
-        '<article class="rounded-2xl border border-neutral-200 p-4"><p class="text-xs font-bold text-neutral-500">Total</p><p class="mt-2 text-2xl font-black text-neutral-900">',
+        '<article class="rounded-2xl border border-neutral-200 p-5"><p class="text-xs font-bold text-neutral-500">Total</p><p class="mt-2 text-2xl font-black text-neutral-900">',
         html(components.formatRupiah(total)),
         '</p><p class="text-sm text-neutral-600">Dibayar ',
         html(components.formatRupiah(payment.paid)),
@@ -3641,7 +3466,7 @@
         html(payment.method),
         " - Status: ",
         html(payment.status),
-        " - Bukti dummy: ",
+        " - Bukti: ",
         html(payment.proofFileName || "-"),
         "</p>"
       ].join("")
@@ -3659,39 +3484,57 @@
     }
     components.confirmAction({
       title: "Hapus pembayaran?",
-      message: payment.id + " akan dihapus dari state browser.",
+      message: payment.id + " akan dihapus dari database.",
       confirmText: "Hapus",
       variant: "danger",
-      onConfirm: function () {
-        store.update(function (draft) {
-          draft.payments = draft.payments.filter(function (item) {
-            return item.id !== id;
-          });
-        });
-        showSuccess("Pembayaran dihapus.");
+      onConfirm: async function () {
+        await store.deletePayment(id);
+        showSuccess("Pembayaran dihapus dari database.");
       }
     });
   }
 
   function resetData() {
     components.confirmAction({
-      title: "Reset dummy data?",
-      message: "Semua perubahan localStorage akan kembali ke seed awal.",
-      confirmText: "Reset",
-      variant: "danger",
-      onConfirm: function () {
-        store.reset();
-        showSuccess("Dummy data berhasil di-reset.");
+      title: "Muat ulang data API?",
+      message: "Dashboard akan mengambil ulang data terbaru dari backend.",
+      confirmText: "Muat Ulang",
+      variant: "primary",
+      onConfirm: async function () {
+        await store.refresh();
+        showSuccess("Data terbaru berhasil dimuat dari API.");
       }
     });
   }
 
-  components.onReady(function () {
-    renderApp();
+  components.onReady(async function () {
+    const mount = document.getElementById("app");
+    if (mount) {
+      mount.innerHTML = components.loadingState({
+        title: "Memuat dashboard",
+        message: "Mengambil data operasional terbaru dari API.",
+        label: "Memuat data API"
+      });
+    }
     bindEvents();
     window.addEventListener("hashchange", renderApp);
-    if (!unsubscribe) {
-      unsubscribe = store.subscribe(renderApp);
+    try {
+      await auth.validateSession("admin");
+      await store.hydrate();
+      renderApp();
+      if (!unsubscribe) {
+        unsubscribe = store.subscribe(renderApp);
+      }
+    } catch (error) {
+      if (mount && mount.isConnected) {
+        mount.innerHTML = components.emptyState({
+          title: "Dashboard tidak dapat dimuat",
+          message: error.message || "Periksa koneksi backend dan sesi login.",
+          iconName: "alert",
+          actionHtml:
+            '<button type="button" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary-500 px-4 text-sm font-bold text-white" onclick="window.location.reload()">Coba Lagi</button>'
+        });
+      }
     }
   });
 })();

@@ -1,6 +1,16 @@
 (function () {
   "use strict";
 
+  const localPreviewHost =
+    ["localhost", "127.0.0.1"].includes(window.location.hostname) &&
+    Boolean(window.location.port) &&
+    !["80", "443"].includes(window.location.port);
+  const apiBaseUrl =
+    window.PMD_API_BASE_URL ||
+    (window.location.protocol === "file:" || localPreviewHost
+      ? "http://localhost/service-papuans-manado/backend-API/api"
+      : "../backend-API/api");
+
   const statusMeta = [
     {
       key: "DITERIMA",
@@ -119,9 +129,10 @@
     locale: "id-ID",
     currency: "IDR",
     storage: {
-      key: "pmd-service-demo-state-v1",
-      authUsersKey: "pmd-auth-demo-users-v1",
-      authSessionKey: "pmd-auth-demo-session-v1"
+      authSessionKey: "pmd-api-session-v1"
+    },
+    api: {
+      baseUrl: apiBaseUrl
     },
     colors,
     roles: {
@@ -170,7 +181,7 @@
         { id: "assignments", label: "Tugas Aktif", href: "teknisi.html#tugas", icon: "tool" },
         { id: "waiting", label: "Menunggu Sparepart", href: "teknisi.html#sparepart", icon: "box" },
         { id: "history", label: "Riwayat Update", href: "teknisi.html#riwayat", icon: "chart" },
-        { id: "profile", label: "Profil Demo", href: "teknisi.html#profil", icon: "user" }
+        { id: "profile", label: "Profil", href: "teknisi.html#profil", icon: "user" }
       ]
     },
     serviceStatuses: statusMeta

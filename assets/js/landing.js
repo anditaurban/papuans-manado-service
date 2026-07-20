@@ -3,7 +3,7 @@
 
   const components = window.PMD_COMPONENTS;
   const config = window.PMD_CONFIG;
-  const store = window.PMD_STORE;
+  const api = window.PMD_API;
   const receiptPattern = /^PMD-\d{8}-\d{4}$/;
 
   function normalizeReceipt(value) {
@@ -41,7 +41,7 @@
     window.location.href = "tracking.html?resi=" + encodeURIComponent(receipt);
   }
 
-  function handleReceiptSubmit(event) {
+  async function handleReceiptSubmit(event) {
     event.preventDefault();
 
     const form = event.currentTarget;
@@ -57,19 +57,25 @@
       return;
     }
 
-    if (!store.findServiceByReceipt(receipt)) {
-      setError("Nomor resi tidak ditemukan. Periksa kembali penulisannya.");
-      return;
-    }
-
     if (button) {
       button.disabled = true;
-      button.textContent = "Membuka tracking...";
+      button.textContent = "Memeriksa API...";
     }
 
-    window.setTimeout(function () {
+    try {
+      await api.tracking(receipt);
       redirectToTracking(receipt);
-    }, 250);
+    } catch (error) {
+      setError(
+        error.status === 404
+          ? "Nomor resi tidak ditemukan. Periksa kembali penulisannya."
+          : error.message || "API tracking tidak dapat dihubungi."
+      );
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Cek Status";
+      }
+    }
   }
 
   function renderStatusStrips() {
@@ -227,28 +233,6 @@
     startAutoplay();
   }
 
-  function renderHeroMetrics() {
-    const state = store.getState();
-    const activeStatuses = ["DITERIMA", "DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN"];
-    const activeTotal = state.serviceOrders.filter(function (service) {
-      return activeStatuses.includes(service.status);
-    }).length;
-
-    const totalServices = document.querySelector("[data-hero-total-services]");
-    const activeServices = document.querySelector("[data-hero-active-services]");
-    const technicians = document.querySelector("[data-hero-technicians]");
-
-    if (totalServices) {
-      totalServices.textContent = String(state.serviceOrders.length);
-    }
-    if (activeServices) {
-      activeServices.textContent = String(activeTotal);
-    }
-    if (technicians) {
-      technicians.textContent = String(state.technicians.length);
-    }
-  }
-
   function initDemoReceipts() {
     document.querySelectorAll("[data-demo-receipt]").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -268,7 +252,6 @@
     components.initPublicNav("home");
     components.initPublicFooter();
     renderStatusStrips();
-    renderHeroMetrics();
     initDemoReceipts();
     initTestimonialSlider();
 

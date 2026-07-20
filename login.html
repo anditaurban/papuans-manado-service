@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login Operasional - Papuans Manado</title>
     <link rel="icon" href="./assets/img/papuans-manado.jpg" type="image/x-icon"> 
-    <meta name="description" content="Login demo Admin/Pemilik dan Teknisi Service Handphone Papuans Manado.">
+    <meta name="description" content="Login API Admin/Pemilik dan Teknisi Service Handphone Papuans Manado.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="./assets/js/config.js"></script>
+    <script src="./assets/js/api.js"></script>
     <link rel="stylesheet" href="./assets/css/app.css">
   </head>
   <body class="auth-page text-neutral-900 antialiased">
@@ -40,7 +41,7 @@
             <a class="text-sm font-bold text-primary-600 hover:text-primary-500" href="index.html">Beranda</a>
           </div>
 
-          <p class="mt-8 text-sm font-bold text-primary-600 lg:mt-0">Akses operasional demo</p>
+          <p class="mt-8 text-sm font-bold text-primary-600 lg:mt-0">Akses operasional</p>
           <h1 class="mt-3 text-3xl font-black text-neutral-900">Selamat datang kembali</h1>
           <p class="mt-3 text-sm leading-6 text-neutral-600">
             Masuk sebagai <strong class="text-neutral-900" data-login-role-copy>Admin/Pemilik</strong> untuk membuka dashboard yang sesuai.
@@ -69,7 +70,7 @@
             <div class="mt-5">
               <label class="text-sm font-bold text-neutral-900" for="login-password">Password</label>
               <div class="relative mt-2">
-                <input class="auth-input pr-24" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter" aria-describedby="login-message" required>
+                <input class="auth-input pr-24" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Masukkan password" aria-describedby="login-message" required>
                 <button class="absolute inset-y-0 right-0 min-w-20 px-3 text-xs font-bold text-neutral-600 hover:text-primary-600" type="button" aria-pressed="false" data-password-toggle="login-password">Lihat</button>
               </div>
             </div>
@@ -81,14 +82,14 @@
             </button>
 
             <div class="mt-6">
-              <p class="text-xs font-black uppercase text-neutral-500">Akun demo tersedia</p>
+              <p class="text-xs font-black uppercase text-neutral-500">Akun API bawaan</p>
               <div class="mt-2 grid gap-2" data-demo-accounts></div>
             </div>
           </form>
 
           <p class="mt-6 text-center text-sm text-neutral-600">
-            Pendaftaran akun demo hanya untuk Admin/Pemilik.
-            <a class="font-bold text-primary-600 hover:text-primary-500" href="register.html">Daftar admin</a>
+            Belum memiliki akun?
+            <a class="font-bold text-primary-600 hover:text-primary-500" href="register.html">Daftar Admin atau Teknisi</a>
           </p>
         </div>
       </section>

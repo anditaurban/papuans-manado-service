@@ -1,19 +1,19 @@
 # Service Handphone Papuans Manado Frontend
 
-Status: `AWAITING_PHASE_11_APPROVAL`.
+Status: `FRONTEND_API_INTEGRATED`.
 
-Frontend ini adalah prototype operasional service handphone berbasis HTML,
-Tailwind CSS Play CDN, JavaScript vanilla, data dummy lokal, dan simulasi
-persistensi browser melalui `localStorage`.
+Frontend operasional ini berbasis HTML, Tailwind CSS Play CDN, dan JavaScript
+vanilla. Data operasional dibaca dan ditulis melalui REST API PHP/MySQL;
+`localStorage` hanya menyimpan sesi Bearer.
 
 Phase 11 menambahkan identitas brand dari `assets/img/papuans-manado.jpg`,
-kontak bisnis final, navigasi admin per modul, login demo berbasis role
-Admin/Pemilik dan Teknisi, register admin demo, serta restyle landing berbasis
-ilustrasi lokal.
+kontak bisnis final, navigasi admin per modul, login berbasis role
+Admin/Pemilik dan Teknisi, register kedua role dalam satu halaman, serta
+restyle landing berbasis ilustrasi lokal.
 
-Tidak ada npm, build tool, backend, database, API server, payment gateway,
-checkout, e-commerce, upload server, WhatsApp API nyata, atau autentikasi nyata
-di tahap ini.
+Tidak ada npm atau build tool. Frontend memerlukan `backend-API` dan database
+MySQL proyek ini; payment gateway, checkout, e-commerce, upload server, dan
+WhatsApp API tetap tidak digunakan.
 
 ## Open Locally
 
@@ -30,9 +30,9 @@ Urutan script setiap halaman tetap:
 
 1. Tailwind CSS Play CDN
 2. `assets/js/config.js`
-3. `assets/js/auth.js` pada login, register, admin, dan teknisi
-4. `assets/js/data.js`
-5. `assets/js/store.js`
+3. `assets/js/api.js`
+4. `assets/js/auth.js` pada login, register, admin, dan teknisi
+5. `assets/js/store.js` pada admin dan teknisi
 6. `assets/js/components.js`
 7. Script halaman terkait
 
@@ -103,8 +103,8 @@ Privacy:
 
 ### `login.html` dan `register.html`
 
-Halaman akses operasional demo berbasis state browser lokal. Login menyediakan
-role Admin/Pemilik dan Teknisi; register tetap khusus Admin/Pemilik.
+Halaman akses operasional berbasis Bearer token API. Login dan register
+menyediakan role Admin/Pemilik dan Teknisi dalam halaman yang sama.
 
 Script: `assets/js/auth.js`
 
@@ -113,15 +113,13 @@ Action utama:
 - Seed akun Admin/Pemilik `admin@papuansmanado.id` / `admin123`
 - Seed akun Teknisi `rian@papuansmanado.id`, `melky@papuansmanado.id`, dan
   `fadly@papuansmanado.id` dengan password `teknisi123`
-- Pilihan role, isi akun demo, login, dan validasi form
-- Register akun admin demo di browser
+- Pilihan role, akun seed, login, dan validasi form
+- Register akun Admin/Pemilik atau Teknisi melalui API
 - Membuat sesi dengan role dan `technicianId`
 - Mengarahkan guest dari `admin.html` atau `teknisi.html` ke login
 - Menolak silang akses dan mengembalikan pengguna ke dashboard role aktif
-- Handoff query satu kali untuk demo yang dibuka langsung melalui `file://`
-
-Password demo tidak aman untuk produksi dan tidak menggantikan autentikasi
-server.
+- Profil teknisi baru dibuat otomatis oleh backend dan ditautkan melalui
+  `technicianId`
 
 ### `admin.html`
 
@@ -199,7 +197,8 @@ Kontrak UI:
 - `PMD_CONFIG.app`: nama aplikasi, kota, alamat, jam, label WhatsApp
 - `PMD_CONFIG.locale`: `id-ID`
 - `PMD_CONFIG.currency`: `IDR`
-- `PMD_CONFIG.storage`: key data, akun auth demo, dan sesi auth demo
+- `PMD_CONFIG.storage`: key sesi API
+- `PMD_CONFIG.api`: base URL backend
 - `PMD_CONFIG.colors`: token warna Tailwind
 - `PMD_CONFIG.roles`: admin, technician, customer
 - `PMD_CONFIG.routes`: public, tracking, login, register, admin, technician
@@ -216,33 +215,17 @@ Status canonical:
 6. `SELESAI`
 7. `DIAMBIL`
 
-### Seed Data
+### API Client
 
-File: `assets/js/data.js`
+File: `assets/js/api.js`
 
-Koleksi:
+Kontrak utama:
 
-- `customers`
-- `technicians`
-- `damageTypes`
-- `parts`
-- `serviceOrders`
-- `timelines`
-- `payments`
-
-Edge state yang sengaja ada di seed:
-
-- Semua status canonical terwakili
-- Tiket tanpa IMEI
-- Tiket belum assigned
-- Stok sparepart habis
-- Pembayaran DP
-- Tiket tanpa sparepart
-- Prioritas tinggi
-- Tiket menunggu sparepart
-- Tiket sudah diambil
-- Long content
-- Resi invalid demo untuk not-found flow
+- Session Bearer: `getSession()`, `setSession()`
+- Auth: `login()`, `register()`, `me()`, `logout()`
+- Resource: `listAll()`, `get()`, `create()`, `update()`, `remove()`
+- Workflow: `updateStatus()`
+- Public: `tracking()`
 
 ### Store
 
@@ -251,9 +234,7 @@ File: `assets/js/store.js`
 Kontrak state:
 
 - `getState()`
-- `setState(nextState)`
-- `update(mutator)`
-- `reset()`
+- `hydrate()` dan `refresh()`
 - `subscribe(listener)`
 - `findServiceByReceipt(receipt)`
 - `getCustomer(id)`
@@ -264,9 +245,11 @@ Kontrak state:
 - `getTimelineForService(serviceId)`
 - `getStatusCounts()`
 - `getAssignmentsForTechnician(technicianId)`
+- Mutasi API untuk customer, teknisi/skill, damage, part, device, service,
+  assignment, part usage, status, dan payment
 
-`reset()` mengembalikan state ke `PMD_DATA` secara deterministik. Jika
-`localStorage` rusak atau format lama, store fallback ke seed.
+Store tidak memiliki fallback seed. Setelah mutasi berhasil, state dihidrasi
+ulang dari API.
 
 ### Components
 
@@ -288,26 +271,25 @@ Kontrak shared UI:
 - Public nav/footer
 - Internal app shell dengan sidebar role-based
 
-### Demo Auth
+### API Auth
 
 File: `assets/js/auth.js`
 
 Kontrak UI:
 
-- `getUsers()`
 - `getSession()`
 - `requireRole(role)`
 - `requireAdmin()`
 - `requireTechnician()`
+- `validateSession(role)`
 - `login(email, password, role)`
 - `register(payload)`
 - `logout()`
 - `initAuthPage()`
 
-## Future API Event Map
+## API Event Map
 
-Belum ada API pada frontend ini. Daftar berikut adalah kandidat endpoint/event
-untuk tahap backend/API setelah frontend fixed.
+Operasi berikut telah dipetakan ke REST API proyek.
 
 ### Public Tracking
 
@@ -319,7 +301,7 @@ untuk tahap backend/API setelah frontend fixed.
 
 ### Admin Operations
 
-- Authenticate admin in a future real auth layer
+- Authenticate admin
 - Create admin accounts through an owner-approved flow
 - End authenticated session
 - Create service order
@@ -336,11 +318,11 @@ untuk tahap backend/API setelah frontend fixed.
 - Read and update sparepart
 - Create part usage and decrement stock
 - Create, update, delete payment
-- Reset seed only for demo environments
+- Refresh state terbaru dari API
 
 ### Technician Workflow
 
-- Authenticate technician in a future real auth layer
+- Authenticate technician
 - Read assignments for authenticated technician
 - Read assignment detail
 - Update diagnosis and action note
@@ -366,10 +348,9 @@ untuk tahap backend/API setelah frontend fixed.
 - Brand memakai palet hitam/navy, putih/perak, dan merah dari logo.
 - Alamat final berada di Jl. Teluk Bayur, Kelurahan Kleak, Malalayang, Manado.
 - Kontak bisnis adalah `+62 821-9008-7876`.
-- Data source remains `assets/js/data.js`; runtime state remains `store.js`.
-- `localStorage` is only a browser simulation layer.
-- Login/logout Admin dan Teknisi serta register Admin disimulasikan melalui
-  localStorage, bukan real auth.
+- Data source operasional adalah REST API; `store.js` memetakan respons untuk UI.
+- `localStorage` hanya menyimpan sesi/token Bearer.
+- Login, logout, dan register Admin maupun Teknisi memakai endpoint auth nyata.
 - Setiap akun teknisi seed terhubung ke satu profil `technicianId`.
 - Payment is manual cash or transfer record only.
 - Reports are operational summaries, not accounting.

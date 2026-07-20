@@ -366,11 +366,18 @@
     overlay.querySelectorAll("[data-modal-cancel]").forEach(function (control) {
       control.addEventListener("click", close);
     });
-    overlay.querySelector("[data-modal-confirm]").addEventListener("click", function () {
-      if (typeof settings.onConfirm === "function") {
-        settings.onConfirm();
+    overlay.querySelector("[data-modal-confirm]").addEventListener("click", async function (event) {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        if (typeof settings.onConfirm === "function") {
+          await settings.onConfirm();
+        }
+        close();
+      } catch (error) {
+        button.disabled = false;
+        showToast(error.message || "Aksi gagal diproses oleh API.", { type: "error" });
       }
-      close();
     });
     overlay.addEventListener("click", function (event) {
       if (event.target === overlay) {
@@ -524,7 +531,7 @@
 
     return [
       '<aside class="app-sidebar flex h-full w-72 shrink-0 flex-col text-white lg:w-64">',
-      '<div class="flex min-h-[4.75rem] items-center gap-3 border-b border-white/10 px-5">',
+      '<div class="flex min-h-[5.5rem] items-center gap-3 border-b border-white/10 px-6">',
       brandLogoMarkup("h-11 w-11"),
       '<div class="min-w-0"><p class="truncate text-sm font-bold">',
       escapeHtml(config.app.shortName),
@@ -539,12 +546,12 @@
       "</div>",
       '<nav aria-label="Menu ',
       escapeHtml(label),
-      '" class="flex-1 space-y-1 px-3 py-4">',
+      '" class="flex-1 space-y-1 px-4 py-5">',
       menu
         .map(function (item) {
           const active = item.id === activeId;
           return [
-            '<a class="flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold transition ',
+            '<a class="flex min-h-12 items-center rounded-xl px-4 text-sm font-semibold transition ',
             active ? "bg-primary-500 text-white" : "text-white/75 hover:bg-white/10 hover:text-white",
             '" href="',
             escapeHtml(item.href),
@@ -559,7 +566,6 @@
         })
         .join(""),
       "</nav>",
-      '<div class="border-t border-white/10 p-4 text-xs leading-5 text-white/60">Prototype frontend dengan data lokal.</div>',
       "</aside>"
     ].join("");
   }
@@ -586,7 +592,7 @@
       sidebarMarkup(settings.role, settings.active, false),
       "</div>",
       '<div class="flex min-w-0 flex-1 flex-col">',
-      '<header class="admin-topbar sticky top-0 z-30 flex min-h-[4.75rem] items-center gap-4 border-b border-neutral-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">',
+      '<header class="admin-topbar sticky top-0 z-30 flex min-h-[5.5rem] items-center gap-4 border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur sm:px-8 lg:px-10">',
       '<button type="button" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 lg:hidden" aria-label="Buka sidebar" aria-expanded="false" data-sidebar-open>',
       icon("menu", "h-5 w-5"),
       "</button>",
@@ -597,11 +603,9 @@
       '</h1><p class="mt-1 hidden text-sm text-neutral-600 sm:block">',
       escapeHtml(settings.subtitle),
       "</p></div>",
-      '<div class="flex items-center gap-2"><a href="index.html" class="hidden min-h-11 items-center rounded-lg border border-neutral-200 px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 sm:inline-flex">Halaman Publik</a>',
       settings.role === "admin" || settings.role === "technician"
-        ? '<button type="button" class="inline-flex min-h-11 items-center rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" data-auth-logout>Keluar</button>'
+        ? '<button type="button" class="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500" data-auth-logout>Keluar</button>'
         : "",
-      "</div>",
       "</header>",
       '<main id="main" class="flex-1 px-4 py-6 sm:px-6 lg:px-8">',
       settings.content || emptyState(),
@@ -647,7 +651,9 @@
     if (logoutButton) {
       logoutButton.addEventListener("click", function () {
         if (window.PMD_AUTH) {
-          window.PMD_AUTH.logout();
+          window.PMD_AUTH.logout().catch(function (error) {
+            showToast(error.message || "Logout gagal diproses.", { type: "error" });
+          });
         }
       });
     }

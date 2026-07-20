@@ -10,7 +10,7 @@
     return;
   }
 
-  const authSession = auth.getSession();
+  let authSession = auth.getSession();
   const statusFlow = ["DITERIMA", "DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN", "SIAP_DIAMBIL", "SELESAI", "DIAMBIL"];
   const editableStatuses = ["DITERIMA", "DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN", "SIAP_DIAMBIL"];
   const closedStatuses = ["SELESAI", "DIAMBIL"];
@@ -48,6 +48,28 @@
   function toPositiveInt(value) {
     const number = parseInt(value, 10);
     return Number.isFinite(number) && number > 0 ? number : 0;
+  }
+
+  function displayPhone(value) {
+    const digits = String(value || "").replace(/\D/g, "");
+    return digits.startsWith("62") ? "0" + digits.slice(2) : digits;
+  }
+
+  function parseSkills(value) {
+    const seen = new Set();
+    return String(value || "")
+      .split(/[,\n]/)
+      .map(function (skill) {
+        return skill.trim();
+      })
+      .filter(function (skill) {
+        const key = skill.toLowerCase();
+        if (!skill || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
   }
 
   function getDate(value) {
@@ -250,33 +272,6 @@
     return false;
   }
 
-  function generateId(collection, prefix) {
-    const maxNumber = collection.reduce(function (max, item) {
-      const current = parseInt(String(item.id || "").split("-").pop(), 10);
-      return Number.isFinite(current) ? Math.max(max, current) : max;
-    }, 0);
-
-    return prefix + "-" + String(maxNumber + 1).padStart(3, "0");
-  }
-
-  function addTimeline(draft, service, status, note) {
-    const technician = getTechnician(draft, service.technicianId);
-    draft.timelines.push({
-      id: generateId(draft.timelines, "TL"),
-      serviceId: service.id,
-      at: new Date().toISOString(),
-      actor: technician ? technician.name : "Teknisi",
-      status,
-      note
-    });
-  }
-
-  function applyStatusTimestamp(service, status) {
-    if (status === "SIAP_DIAMBIL" && !service.readyAt) {
-      service.readyAt = new Date().toISOString();
-    }
-  }
-
   function option(value, label, selected) {
     return [
       '<option value="',
@@ -290,7 +285,14 @@
   }
 
   function statusOptions(selected) {
-    return editableStatuses
+    const transitions = {
+      DITERIMA: ["DITERIMA", "DIAGNOSA"],
+      DIAGNOSA: ["DIAGNOSA", "MENUNGGU_SPAREPART", "PENGERJAAN"],
+      MENUNGGU_SPAREPART: ["MENUNGGU_SPAREPART", "PENGERJAAN"],
+      PENGERJAAN: ["PENGERJAAN", "SIAP_DIAMBIL"],
+      SIAP_DIAMBIL: ["SIAP_DIAMBIL"]
+    };
+    return (transitions[selected] || [selected])
       .map(function (status) {
         return option(status, getStatusLabel(status), selected);
       })
@@ -473,11 +475,27 @@
         close();
       }
     });
-    overlay.querySelector("[data-technician-modal-form]").addEventListener("submit", function (event) {
+    overlay.querySelector("[data-technician-modal-form]").addEventListener("submit", async function (event) {
       event.preventDefault();
-      const result = typeof settings.onSubmit === "function" ? settings.onSubmit(new FormData(event.target), event.target, close) : true;
-      if (result !== false) {
-        close();
+      const form = event.target;
+      const submitButton = form.querySelector('[type="submit"]');
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+      try {
+        const result =
+          typeof settings.onSubmit === "function"
+            ? await settings.onSubmit(new FormData(form), form, close)
+            : true;
+        if (result !== false) {
+          close();
+        }
+      } catch (error) {
+        setFormError(form, error.message || "Data gagal disimpan melalui API.");
+      } finally {
+        if (submitButton && overlay.isConnected) {
+          submitButton.disabled = false;
+        }
       }
     });
     document.addEventListener("keydown", onKeydown);
@@ -507,7 +525,7 @@
 
   function renderKpiCard(label, value, note, iconName, tone) {
     return [
-      '<article class="app-card p-5">',
+      '<article class="app-card p-5 sm:p-6">',
       '<div class="flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-neutral-600">',
       html(label),
       '</p><p class="mt-3 text-3xl font-black tabular-nums text-neutral-900">',
@@ -568,7 +586,7 @@
 
   function renderFilterForm(state) {
     return [
-      '<form class="grid gap-3 border-b border-neutral-200 bg-white p-5 md:grid-cols-2 xl:grid-cols-4" data-assignment-filter>',
+      '<form class="grid gap-3 border-b border-neutral-200 bg-white p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4" data-assignment-filter>',
       '<label class="text-xs font-bold text-neutral-600">Cari tugas',
       '<input name="assignmentSearch" type="search" value="',
       attr(filters.assignmentSearch),
@@ -603,7 +621,7 @@
           .map(function (service) {
             const closed = closedStatuses.includes(service.status);
             return [
-              '<article class="rounded-2xl border border-neutral-200 bg-white p-4">',
+              '<article class="rounded-2xl border border-neutral-200 bg-white p-5">',
               '<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">',
               '<div><p class="text-xs font-bold text-primary-600">',
               html(service.receipt),
@@ -654,10 +672,10 @@
       '<h2 id="tugas-heading" class="mt-2 text-2xl font-black text-neutral-900">Tugas Aktif</h2>',
       '<p class="mt-2 text-sm leading-6 text-neutral-600">Daftar ini dibatasi pada service yang assigned ke teknisi aktif.</p></div>',
       renderFilterForm(state),
-      '<div class="grid gap-4 p-5">',
+      '<div class="grid gap-4 p-5 sm:p-6">',
       cards,
       "</div>",
-      '<div class="border-t border-neutral-200 px-5 py-4 text-xs text-neutral-500">Menampilkan ',
+      '<div class="border-t border-neutral-200 px-5 py-4 text-xs text-neutral-500 sm:px-6">Menampilkan ',
       html(rows.length),
       " dari ",
       html(getAssignments(state, technician.id).length),
@@ -678,7 +696,7 @@
           '<p class="mt-1 text-xs font-normal text-neutral-500">',
           html(part.name),
           '</p></td><td class="px-4 py-3 text-neutral-700">',
-          html(part.compatibility),
+          html(part.sku),
           '</td><td class="px-4 py-3 font-bold tabular-nums text-neutral-900">',
           html(part.stock),
           '</td><td class="px-4 py-3"><span class="inline-flex rounded-full border px-3 py-1 text-xs font-bold ',
@@ -700,7 +718,7 @@
         ? assignments
             .map(function (service) {
               return [
-                '<div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">',
+                '<div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">',
                 '<p class="text-xs font-bold text-amber-700">',
                 html(service.receipt),
                 '</p><p class="mt-2 font-black text-neutral-900">',
@@ -713,15 +731,15 @@
               ].join("");
             })
             .join("")
-        : '<p class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">Tidak ada assignment menunggu sparepart.</p>',
+        : '<p class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-sm text-neutral-600">Tidak ada assignment menunggu sparepart.</p>',
       "</div></article>",
       '<article class="app-card overflow-hidden">',
       '<div class="border-b border-neutral-200 p-5 sm:p-6"><p class="text-sm font-semibold text-primary-600">Stok Komponen</p><h2 class="mt-2 text-2xl font-black text-neutral-900">Sparepart tersedia</h2></div>',
-      '<div class="overflow-x-auto"><table class="min-w-[720px] w-full divide-y divide-neutral-200 text-sm">',
+      '<div class="p-5 sm:p-6"><div class="overflow-x-auto rounded-xl border border-neutral-200"><table class="min-w-[720px] w-full divide-y divide-neutral-200 text-sm">',
       '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr><th class="px-4 py-3">SKU/Nama</th><th class="px-4 py-3">Kompatibilitas</th><th class="px-4 py-3">Stok</th><th class="px-4 py-3">Status</th></tr></thead>',
       '<tbody class="divide-y divide-neutral-200 bg-white">',
       stockRows,
-      "</tbody></table></div></article></section>"
+      "</tbody></table></div></div></article></section>"
     ].join("");
   }
 
@@ -752,7 +770,7 @@
                 return item.id === entry.serviceId;
               });
               return [
-                '<li class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">',
+                '<li class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">',
                 '<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">',
                 '<div><p class="text-sm font-bold text-neutral-900">',
                 html(service ? service.receipt + " - " + getDeviceName(service) : entry.serviceId),
@@ -767,26 +785,43 @@
               ].join("");
             })
             .join("")
-        : '<li class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">Belum ada riwayat update.</li>',
+        : '<li class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-sm text-neutral-600">Belum ada riwayat update.</li>',
       "</ol></section>"
     ].join("");
   }
 
   function renderProfile(state, technician) {
     const stats = getTechnicianStats(state, technician.id);
+    const skillSummary = technician.skills.length ? technician.skills.join(", ") : "Belum diatur";
+    const whatsapp = authSession.whatsapp ? displayPhone(authSession.whatsapp) : "Belum diatur";
     return [
-      '<section id="profil" class="app-card scroll-mt-24 p-5 sm:p-6" aria-labelledby="profil-heading">',
-      '<p class="text-sm font-semibold text-primary-600">Profil Demo</p>',
+      '<section id="profil" class="app-card min-w-0 scroll-mt-24 p-5 sm:p-6" aria-labelledby="profil-heading">',
+      '<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div>',
+      '<p class="text-sm font-semibold text-primary-600">Profil</p>',
       '<h2 id="profil-heading" class="mt-2 text-2xl font-black text-neutral-900">',
       html(technician.name),
-      '</h2><div class="mt-5 grid gap-4 md:grid-cols-3">',
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><p class="text-xs font-bold text-neutral-500">Keahlian</p><p class="mt-2 text-sm font-bold text-neutral-900">',
-      html(technician.skills.join(", ")),
+      '</h2><p class="mt-2 text-sm leading-6 text-neutral-600">Kelola identitas akun dan informasi kerja teknisi.</p></div>',
+      components.button({
+        label: "Edit Profil",
+        variant: "primary",
+        iconName: "settings",
+        attr: 'data-action="edit-profile"',
+        className: "shrink-0"
+      }),
+      '</div><div class="mt-5 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-5">',
+      '<article class="min-w-0 rounded-2xl border border-neutral-200 bg-neutral-50 p-5"><p class="text-xs font-bold text-neutral-500">Email</p><p class="mt-2 break-all text-sm font-bold text-neutral-900">',
+      html(authSession.email),
       "</p></article>",
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><p class="text-xs font-bold text-neutral-500">Ketersediaan</p><p class="mt-2 text-sm font-bold text-neutral-900">',
+      '<article class="min-w-0 rounded-2xl border border-neutral-200 bg-neutral-50 p-5"><p class="text-xs font-bold text-neutral-500">WhatsApp</p><p class="mt-2 text-sm font-bold text-neutral-900">',
+      html(whatsapp),
+      "</p></article>",
+      '<article class="min-w-0 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 md:col-span-2 xl:col-span-1"><p class="text-xs font-bold text-neutral-500">Keahlian</p><p class="mt-2 break-words text-sm font-bold leading-6 text-neutral-900">',
+      html(skillSummary),
+      "</p></article>",
+      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5"><p class="text-xs font-bold text-neutral-500">Ketersediaan</p><p class="mt-2 text-sm font-bold text-neutral-900">',
       html(technician.availability),
       "</p></article>",
-      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"><p class="text-xs font-bold text-neutral-500">Assignment aktif</p><p class="mt-2 text-3xl font-black text-neutral-900">',
+      '<article class="rounded-2xl border border-neutral-200 bg-neutral-50 p-5"><p class="text-xs font-bold text-neutral-500">Assignment aktif</p><p class="mt-2 text-3xl font-black text-neutral-900">',
       html(stats.active),
       "</p></article>",
       "</div></section>"
@@ -850,7 +885,7 @@
       });
       const active = item && item.id === activeId;
       link.className =
-        "flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold transition " +
+        "flex min-h-12 items-center rounded-xl px-4 text-sm font-semibold transition " +
         (active ? "bg-primary-500 text-white" : "text-white/75 hover:bg-white/10 hover:text-white");
       if (active) {
         link.setAttribute("aria-current", "page");
@@ -906,6 +941,98 @@
     if (actionName === "mark-ready") {
       markReady(id);
     }
+    if (actionName === "edit-profile") {
+      openProfileForm();
+    }
+  }
+
+  function openProfileForm() {
+    const technician = getTechnician(store.getState(), activeTechnicianId);
+    if (!technician) {
+      showError("Profil teknisi tidak ditemukan.");
+      return;
+    }
+
+    openModal({
+      title: "Edit Profil",
+      description: "Perubahan disimpan ke akun login dan profil teknisi yang terhubung.",
+      body: [
+        '<div class="grid gap-4 md:grid-cols-2">',
+        inputField("Nama lengkap", "name", authSession.name || technician.name, {
+          required: true,
+          helper: "Nama ini juga tampil pada assignment teknisi."
+        }),
+        inputField("Email", "email", authSession.email, {
+          type: "email",
+          required: true
+        }),
+        inputField("WhatsApp", "whatsapp", displayPhone(authSession.whatsapp), {
+          type: "tel",
+          placeholder: "08xxxxxxxxxx",
+          helper: "Boleh dikosongkan."
+        }),
+        selectField(
+          "Ketersediaan",
+          "availability",
+          option("Available", "Available", technician.availability) +
+            option("Busy", "Busy", technician.availability) +
+            option("Off", "Off", technician.availability),
+          { required: true }
+        ),
+        '</div><div class="mt-4">',
+        textareaField("Keahlian", "skills", technician.skills.join(", "), {
+          rows: 3,
+          helper: "Pisahkan setiap keahlian dengan koma atau baris baru."
+        }),
+        "</div>"
+      ].join(""),
+      confirmText: "Simpan Profil",
+      onSubmit: async function (data, form) {
+        const name = String(data.get("name") || "").trim();
+        const email = String(data.get("email") || "").trim().toLowerCase();
+        const whatsapp = String(data.get("whatsapp") || "").trim();
+        const availability = String(data.get("availability") || "");
+        const skills = parseSkills(data.get("skills"));
+
+        if (name.length < 3 || name.length > 100) {
+          setFormError(form, "Nama harus terdiri dari 3 sampai 100 karakter.");
+          return false;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setFormError(form, "Masukkan alamat email yang valid.");
+          return false;
+        }
+        const whatsappDigits = whatsapp.replace(/\D/g, "");
+        const validWhatsapp =
+          !whatsapp ||
+          /^0\d{9,14}$/.test(whatsappDigits) ||
+          /^62\d{8,13}$/.test(whatsappDigits);
+        if (!validWhatsapp) {
+          setFormError(form, "Masukkan nomor WhatsApp Indonesia yang valid atau kosongkan.");
+          return false;
+        }
+        if (!["Available", "Busy", "Off"].includes(availability)) {
+          setFormError(form, "Pilih ketersediaan yang valid.");
+          return false;
+        }
+        if (skills.length > 20 || skills.some(function (skill) { return skill.length > 100; })) {
+          setFormError(form, "Keahlian maksimal 20 item dan 100 karakter per item.");
+          return false;
+        }
+
+        await store.updateMyProfile({
+          name,
+          email,
+          whatsapp,
+          availability,
+          skills
+        });
+        authSession = auth.getSession();
+        renderApp();
+        showSuccess("Profil berhasil diperbarui melalui API.");
+        return true;
+      }
+    });
   }
 
   function getAssignedServiceOrFail(state, serviceId) {
@@ -1038,17 +1165,17 @@
         "</div>"
       ].join(""),
       confirmText: "Catat Sparepart",
-      onSubmit: function (data, form) {
-        const result = usePart(serviceId, data.get("partId"), data.get("qty"), data.get("actionNote"), form);
+      onSubmit: async function (data, form) {
+        const result = await usePart(serviceId, data.get("partId"), data.get("qty"), data.get("actionNote"), form);
         if (result) {
-          showSuccess("Pemakaian sparepart dicatat.");
+          showSuccess("Pemakaian sparepart dicatat melalui API.");
         }
         return result;
       }
     });
   }
 
-  function submitWorkUpdate(serviceId, data, form, close) {
+  async function submitWorkUpdate(serviceId, data, form, close) {
     const state = store.getState();
     const service = getAssignedServiceOrFail(state, serviceId);
     if (!service) {
@@ -1083,97 +1210,26 @@
       }
     }
 
-    const commit = function () {
-      commitWorkUpdate(serviceId, {
-        nextStatus,
-        diagnosis,
-        actionNote,
-        estimatedCost,
-        estimatedDoneAt,
-        partId,
-        qty
-      });
-      showSuccess("Update pekerjaan tersimpan.");
-      close();
-    };
-
     if (!isNormalTransition(service.status, nextStatus)) {
-      components.confirmAction({
-        title: "Konfirmasi alur status",
-        message: "Perubahan dari " + getStatusLabel(service.status) + " ke " + getStatusLabel(nextStatus) + " tidak mengikuti alur normal. Lanjutkan?",
-        confirmText: "Lanjutkan",
-        variant: "danger",
-        onConfirm: commit
-      });
+      setFormError(form, "Perubahan status tidak mengikuti alur canonical API.");
       return false;
     }
 
-    commit();
+    await store.updateWork(serviceId, {
+      nextStatus,
+      diagnosis,
+      actionNote,
+      estimatedCost,
+      estimatedDoneAt,
+      partId,
+      qty
+    });
+    showSuccess("Update pekerjaan tersimpan melalui API.");
+    close();
     return false;
   }
 
-  function commitWorkUpdate(serviceId, payload) {
-    store.update(function (draft) {
-      const service = draft.serviceOrders.find(function (item) {
-        return item.id === serviceId && item.technicianId === activeTechnicianId;
-      });
-      if (!service) {
-        return;
-      }
-      const previousStatus = service.status;
-      service.status = payload.nextStatus;
-      applyStatusTimestamp(service, payload.nextStatus);
-      if (payload.estimatedDoneAt) {
-        service.estimatedDoneAt = payload.estimatedDoneAt;
-      }
-      if (payload.estimatedCost !== null) {
-        service.estimatedCost = payload.estimatedCost;
-      }
-      if (payload.diagnosis) {
-        service.safeDiagnosis = payload.diagnosis;
-      }
-      if (payload.partId) {
-        const part = draft.parts.find(function (item) {
-          return item.id === payload.partId;
-        });
-        if (part && part.stock >= payload.qty) {
-          part.stock -= payload.qty;
-          service.partUsages = service.partUsages || [];
-          const existing = service.partUsages.find(function (usage) {
-            return usage.partId === payload.partId;
-          });
-          if (existing) {
-            existing.qty += payload.qty;
-          } else {
-            service.partUsages.push({ partId: payload.partId, qty: payload.qty });
-          }
-        }
-      }
-
-      const noteParts = [];
-      if (previousStatus !== payload.nextStatus) {
-        noteParts.push("Status " + getStatusLabel(previousStatus) + " ke " + getStatusLabel(payload.nextStatus) + ".");
-      }
-      if (payload.diagnosis) {
-        noteParts.push("Diagnosis: " + payload.diagnosis);
-      }
-      if (payload.actionNote) {
-        noteParts.push("Tindakan: " + payload.actionNote);
-      }
-      if (payload.partId) {
-        const part = draft.parts.find(function (item) {
-          return item.id === payload.partId;
-        });
-        noteParts.push("Sparepart: " + (part ? part.sku : payload.partId) + " x" + payload.qty + ".");
-      }
-      if (payload.estimatedDoneAt) {
-        noteParts.push("Estimasi selesai: " + components.formatDate(payload.estimatedDoneAt) + ".");
-      }
-      addTimeline(draft, service, payload.nextStatus, noteParts.join(" "));
-    });
-  }
-
-  function usePart(serviceId, partId, qtyValue, noteValue, form) {
+  async function usePart(serviceId, partId, qtyValue, noteValue, form) {
     const state = store.getState();
     const service = getAssignedServiceOrFail(state, serviceId);
     const qty = toPositiveInt(qtyValue);
@@ -1192,29 +1248,7 @@
       return false;
     }
 
-    store.update(function (draft) {
-      const draftService = draft.serviceOrders.find(function (item) {
-        return item.id === serviceId && item.technicianId === activeTechnicianId;
-      });
-      const draftPart = draft.parts.find(function (item) {
-        return item.id === partId;
-      });
-      if (!draftService || !draftPart || draftPart.stock < qty) {
-        return;
-      }
-      draftPart.stock -= qty;
-      draftService.partUsages = draftService.partUsages || [];
-      const existing = draftService.partUsages.find(function (usage) {
-        return usage.partId === partId;
-      });
-      if (existing) {
-        existing.qty += qty;
-      } else {
-        draftService.partUsages.push({ partId, qty });
-      }
-      addTimeline(draft, draftService, draftService.status, "Pemakaian sparepart " + draftPart.sku + " x" + qty + ". Tindakan: " + note);
-    });
-
+    await store.recordPartUsage(serviceId, partId, qty, "Tindakan: " + note);
     return true;
   }
 
@@ -1226,43 +1260,54 @@
       return;
     }
 
-    const commit = function () {
-      store.update(function (draft) {
-        const current = draft.serviceOrders.find(function (item) {
-          return item.id === serviceId && item.technicianId === activeTechnicianId;
-        });
-        if (!current) {
-          return;
-        }
-        const previousStatus = current.status;
-        current.status = "SIAP_DIAMBIL";
-        applyStatusTimestamp(current, "SIAP_DIAMBIL");
-        addTimeline(draft, current, "SIAP_DIAMBIL", "Teknisi menandai service siap diambil. Status sebelumnya: " + getStatusLabel(previousStatus) + ".");
-      });
-      showSuccess("Service ditandai siap diambil.");
-    };
-
     if (!isNormalTransition(service.status, "SIAP_DIAMBIL")) {
-      components.confirmAction({
-        title: "Konfirmasi siap diambil",
-        message: "Status " + getStatusLabel(service.status) + " akan langsung menjadi Siap Diambil.",
-        confirmText: "Tandai Siap",
-        variant: "danger",
-        onConfirm: commit
-      });
+      showError("Status harus berada pada Pengerjaan sebelum ditandai Siap Diambil.");
       return;
     }
 
-    commit();
+    store
+      .updateStatus(
+        serviceId,
+        "SIAP_DIAMBIL",
+        "Teknisi menandai service siap diambil. Status sebelumnya: " + getStatusLabel(service.status) + "."
+      )
+      .then(function () {
+        showSuccess("Service ditandai siap diambil melalui API.");
+      })
+      .catch(function (error) {
+        showError(error.message || "Status service gagal diperbarui.");
+      });
   }
 
-  components.onReady(function () {
-    activeTechnicianId = authSession.technicianId;
-    renderApp();
+  components.onReady(async function () {
+    const mount = document.getElementById("app");
+    if (mount) {
+      mount.innerHTML = components.loadingState({
+        title: "Memuat tugas teknisi",
+        message: "Mengambil assignment dan stok terbaru dari API.",
+        label: "Memuat data API"
+      });
+    }
     bindEvents();
     window.addEventListener("hashchange", syncActiveMenu);
-    if (!unsubscribe) {
-      unsubscribe = store.subscribe(renderApp);
+    try {
+      const session = await auth.validateSession("technician");
+      activeTechnicianId = session.technicianId || authSession.technicianId;
+      await store.hydrate();
+      renderApp();
+      if (!unsubscribe) {
+        unsubscribe = store.subscribe(renderApp);
+      }
+    } catch (error) {
+      if (mount && mount.isConnected) {
+        mount.innerHTML = components.emptyState({
+          title: "Dashboard teknisi tidak dapat dimuat",
+          message: error.message || "Periksa koneksi backend dan sesi login.",
+          iconName: "alert",
+          actionHtml:
+            '<button type="button" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary-500 px-4 text-sm font-bold text-white" onclick="window.location.reload()">Coba Lagi</button>'
+        });
+      }
     }
   });
 })();

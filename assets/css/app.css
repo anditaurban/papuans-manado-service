@@ -50,6 +50,161 @@ textarea {
   box-shadow: 0 12px 32px rgba(8, 11, 14, 0.07);
 }
 
+.admin-content-view,
+.admin-content-view > * {
+  min-width: 0;
+}
+
+.admin-table-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.admin-responsive-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.admin-responsive-table th,
+.admin-responsive-table td {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 1rem !important;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.admin-responsive-table th {
+  line-height: 1.35;
+}
+
+.admin-responsive-table td {
+  line-height: 1.5;
+}
+
+.admin-responsive-table td > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-responsive-table td .flex {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1279px) {
+  .admin-table-shell {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .admin-responsive-table,
+  .admin-responsive-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-responsive-table {
+    table-layout: auto;
+    background: transparent;
+  }
+
+  .admin-responsive-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .admin-responsive-table thead tr,
+  .admin-responsive-table thead th {
+    display: block;
+    width: 1px;
+    height: 1px;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .admin-responsive-table tbody {
+    display: grid;
+    gap: 0.875rem;
+    padding: 1.25rem;
+    background: transparent;
+  }
+
+  .admin-responsive-table tbody > :not([hidden]) ~ :not([hidden]) {
+    border-top-width: 0;
+  }
+
+  .admin-responsive-table tbody tr {
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: #ffffff;
+  }
+
+  .admin-responsive-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.42fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.875rem 1rem !important;
+    border-bottom: 1px solid var(--line);
+    text-align: left !important;
+  }
+
+  .admin-responsive-table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-responsive-table tbody td::before {
+    min-width: 0;
+    color: #64748b;
+    content: attr(data-label);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .admin-responsive-table tbody td.admin-table-empty {
+    display: block;
+    padding: 1.5rem !important;
+    text-align: center !important;
+  }
+
+  .admin-responsive-table tbody td.admin-table-empty::before {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .admin-responsive-table tbody {
+    gap: 0.75rem;
+    padding: 0.875rem;
+  }
+
+  .admin-responsive-table tbody td {
+    grid-template-columns: minmax(6.25rem, 0.4fr) minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.8125rem 0.875rem !important;
+    font-size: 0.8125rem;
+  }
+}
+
 .landing-chip {
   min-height: 2.25rem;
   border-radius: 999px;
@@ -1060,6 +1215,50 @@ textarea {
 
   table {
     font-size: 11px;
+  }
+
+  .admin-table-shell {
+    overflow: visible !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 0 !important;
+  }
+
+  .admin-responsive-table {
+    display: table !important;
+    table-layout: auto !important;
+  }
+
+  .admin-responsive-table thead {
+    position: static !important;
+    display: table-header-group !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+  }
+
+  .admin-responsive-table tbody {
+    display: table-row-group !important;
+    padding: 0 !important;
+  }
+
+  .admin-responsive-table tr {
+    display: table-row !important;
+    border: 0 !important;
+  }
+
+  .admin-responsive-table th,
+  .admin-responsive-table td {
+    display: table-cell !important;
+    padding: 0.4rem 0.5rem !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    text-align: left !important;
+  }
+
+  .admin-responsive-table td::before {
+    display: none !important;
   }
 
   a[href]::after {

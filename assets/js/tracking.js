@@ -3,7 +3,7 @@
 
   const components = window.PMD_COMPONENTS;
   const config = window.PMD_CONFIG;
-  const store = window.PMD_STORE;
+  const api = window.PMD_API;
   const receiptPattern = /^PMD-\d{8}-\d{4}$/;
   const notFoundDemoReceipt = "PMD-INVALID-0000";
   const loadingDelayMs = 350;
@@ -68,7 +68,10 @@
       };
     }
 
-    const total = payment.serviceFee + payment.partsFee - payment.discount;
+    const total =
+      typeof payment.totalAmount === "number"
+        ? payment.totalAmount
+        : payment.serviceFee + payment.partsFee - payment.discount;
     return {
       status: payment.status,
       method: payment.method,
@@ -209,12 +212,38 @@
     ].join("");
   }
 
-  function renderResult(service) {
-    const customer = store.getCustomer(service.customerId) || {};
-    const technician = store.getTechnician(service.technicianId) || null;
-    const damageType = store.getDamageType(service.damageTypeId) || {};
-    const timeline = store.getTimelineForService(service.id);
-    const payment = store.getPaymentForService(service.id);
+  function renderResult(result) {
+    const customer = result.customer || {};
+    const serviceInfo = result.service || {};
+    const service = {
+      receipt: result.receipt,
+      status: result.status,
+      priority: result.priority,
+      device: result.device || {},
+      complaint: serviceInfo.complaint || "",
+      safeDiagnosis: serviceInfo.safe_diagnosis || "",
+      estimatedCost: serviceInfo.estimated_cost,
+      finalCost: serviceInfo.final_cost,
+      estimatedDoneAt: serviceInfo.estimated_done_at
+    };
+    const technician = serviceInfo.technician || null;
+    const damageType = serviceInfo.damage || "-";
+    const timeline = (result.timeline || []).map(function (entry) {
+      return {
+        at: entry.occurred_at,
+        actor: entry.actor,
+        status: entry.status,
+        note: entry.note
+      };
+    });
+    const payment = result.payment
+      ? {
+          method: result.payment.method,
+          status: result.payment.status,
+          paid: result.payment.paid,
+          totalAmount: result.payment.total_amount
+        }
+      : null;
     const paymentSummary = getPaymentSummary(payment);
     const deviceName = [service.device.brand, service.device.model].filter(Boolean).join(" ");
     const currentStatus = components.getStatusMeta(service.status);
@@ -245,12 +274,12 @@
       '<section class="app-card p-5 sm:p-6">',
       '<h2 class="text-xl font-bold text-neutral-900">Detail perangkat</h2>',
       '<div class="mt-5 grid gap-3 sm:grid-cols-2">',
-      renderInfoItem("Pelanggan", components.maskName(customer.name)),
-      renderInfoItem("WhatsApp", components.maskWhatsApp(customer.whatsapp)),
+      renderInfoItem("Pelanggan", customer.name),
+      renderInfoItem("WhatsApp", customer.whatsapp_masked),
       renderInfoItem("Perangkat", deviceName),
       renderInfoItem("Warna", service.device.color),
-      renderInfoItem("IMEI", components.maskImei(service.device.imei)),
-      renderInfoItem("Jenis kerusakan", damageType.name || "-"),
+      renderInfoItem("IMEI", service.device.imei_masked),
+      renderInfoItem("Jenis kerusakan", damageType),
       "</div>",
       '<div class="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">',
       '<p class="text-xs font-semibold text-neutral-600">Keluhan awal</p>',
@@ -280,7 +309,7 @@
       renderInfoItem("Metode", paymentSummary.method),
       renderInfoItem("Dibayar", paymentSummary.paid),
       renderInfoItem("Total tagihan tercatat", paymentSummary.total),
-      renderInfoItem("Teknisi", technician ? technician.name : "Belum assigned"),
+      renderInfoItem("Teknisi", technician || "Belum assigned"),
       "</div></section>",
       '<section class="app-card p-5 sm:p-6">',
       '<h2 class="text-xl font-bold text-neutral-900">Tindakan berikutnya</h2>',
@@ -322,7 +351,7 @@
   function renderLoadingState(mount) {
     mount.innerHTML = components.loadingState({
       title: "Mencari nomor resi",
-      message: "Sebentar, data service demo sedang disiapkan.",
+      message: "Sebentar, data service sedang diambil dari API.",
       label: "Mencari data service"
     });
   }
@@ -340,7 +369,7 @@
     loadingTimer = window.setTimeout(callback, loadingDelayMs);
   }
 
-  function renderFromReceipt(receipt) {
+  async function renderFromReceipt(receipt) {
     const mount = document.querySelector("[data-tracking-panel]");
     if (!mount) {
       return;
@@ -371,19 +400,26 @@
       return;
     }
 
-    const service = store.findServiceByReceipt(receipt);
-    if (!service) {
+    renderLoadingState(mount);
+    try {
+      const response = await api.tracking(receipt);
+      clearSearchError();
+      mount.innerHTML = renderResult(response.data);
+    } catch (error) {
       renderErrorState(
         mount,
         "Nomor resi tidak ditemukan",
-        "Nomor resi tidak ditemukan. Periksa kembali penulisannya atau hubungi Papuans Manado."
+        error.status === 404
+          ? "Nomor resi tidak ditemukan. Periksa kembali penulisannya atau hubungi Papuans Manado."
+          : error.message || "Data tracking gagal dimuat dari API."
       );
-      setSearchError("Nomor resi tidak ditemukan. Periksa kembali penulisannya.");
+      setSearchError(
+        error.status === 404
+          ? "Nomor resi tidak ditemukan. Periksa kembali penulisannya."
+          : error.message || "API tracking tidak dapat dihubungi."
+      );
       return;
     }
-
-    clearSearchError();
-    mount.innerHTML = renderResult(service);
 
     const printButton = mount.querySelector("[data-print-tracking]");
     if (printButton) {
@@ -420,17 +456,7 @@
         return;
       }
 
-      if (!store.findServiceByReceipt(receipt)) {
-        withLoading(function () {
-          setSearchError("Nomor resi tidak ditemukan. Periksa kembali penulisannya.");
-          renderFromReceipt(receipt);
-        });
-        return;
-      }
-
-      withLoading(function () {
-        window.location.href = "tracking.html?resi=" + encodeURIComponent(receipt);
-      });
+      window.location.href = "tracking.html?resi=" + encodeURIComponent(receipt);
     });
   }
 
