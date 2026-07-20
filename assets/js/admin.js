@@ -551,7 +551,7 @@
 
   function tableWrap(headers, rows) {
     return [
-      '<div class="admin-table-shell">',
+      '<div class="admin-table-shell admin-module-table-shell">',
       '<table class="admin-responsive-table w-full divide-y divide-neutral-200 text-sm">',
       '<thead class="bg-neutral-50 text-left text-xs font-bold text-neutral-600"><tr>',
       headers
@@ -571,6 +571,17 @@
       const labels = Array.from(table.querySelectorAll("thead th")).map(function (header) {
         return String(header.textContent || "").trim();
       });
+      const actionIndex = labels.findIndex(function (label) {
+        return label.toLowerCase() === "aksi";
+      });
+      let maxActionControls = 0;
+
+      if (actionIndex >= 0) {
+        const actionHeader = table.querySelectorAll("thead th")[actionIndex];
+        if (actionHeader) {
+          actionHeader.classList.add("admin-table-actions");
+        }
+      }
 
       table.querySelectorAll("tbody tr").forEach(function (row) {
         const cells = Array.from(row.children).filter(function (cell) {
@@ -584,8 +595,23 @@
 
         cells.forEach(function (cell, index) {
           cell.setAttribute("data-label", labels[index] || "Data");
+
+          if (index === actionIndex) {
+            cell.classList.add("admin-table-actions");
+            maxActionControls = Math.max(
+              maxActionControls,
+              cell.querySelectorAll("button, a").length
+            );
+          }
         });
       });
+
+      if (maxActionControls > 0) {
+        table.style.setProperty(
+          "--admin-action-width",
+          1.5 + maxActionControls * 3 + "rem"
+        );
+      }
     });
   }
 
@@ -2412,7 +2438,7 @@
       },
       settings: {
         title: "Pengaturan",
-        subtitle: "Kelola simulasi frontend dan coverage data demo.",
+        subtitle: "Kelola simulasi frontend dan coverage data.",
         render: renderSettingsModule
       }
     };

@@ -4,37 +4,6 @@
   const config = window.PMD_CONFIG;
   const api = window.PMD_API;
   const validRoles = ["admin", "technician"];
-  const seedAccounts = [
-    {
-      id: "api-admin",
-      name: "Admin Papuans Manado",
-      email: "admin@papuansmanado.id",
-      password: "admin123",
-      role: "admin"
-    },
-    {
-      id: "api-tech-rian",
-      name: "Rian Kambu",
-      email: "rian@papuansmanado.id",
-      password: "teknisi123",
-      role: "technician"
-    },
-    {
-      id: "api-tech-melky",
-      name: "Melky Mandagi",
-      email: "melky@papuansmanado.id",
-      password: "teknisi123",
-      role: "technician"
-    },
-    {
-      id: "api-tech-fadly",
-      name: "Fadly Pratama",
-      email: "fadly@papuansmanado.id",
-      password: "teknisi123",
-      role: "technician"
-    }
-  ];
-
   if (!config || !api) {
     throw new Error("PMD auth requires config.js and api.js.");
   }
@@ -263,47 +232,10 @@
     }
 
     const roleCopy = document.querySelector("[data-login-role-copy]");
-    const accountMount = form.querySelector("[data-demo-accounts]");
-
     function getSelectedRole() {
       return validRoles.includes(form.elements.role.value)
         ? form.elements.role.value
         : "admin";
-    }
-
-    function renderSeedAccounts(role) {
-      if (!accountMount) {
-        return;
-      }
-      accountMount.replaceChildren();
-      seedAccounts
-        .filter(function (user) {
-          return user.role === role;
-        })
-        .forEach(function (user) {
-          const button = document.createElement("button");
-          const identity = document.createElement("span");
-          const credential = document.createElement("span");
-          button.type = "button";
-          button.className =
-            "flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-left transition hover:border-primary-500 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
-          button.setAttribute("data-api-account-id", user.id);
-          identity.className = "min-w-0";
-          const name = document.createElement("strong");
-          const email = document.createElement("small");
-          name.className = "block truncate text-xs font-black text-neutral-900";
-          name.textContent = user.name;
-          email.className = "mt-0.5 block truncate text-[0.6875rem] text-neutral-500";
-          email.textContent = user.email;
-          identity.appendChild(name);
-          identity.appendChild(email);
-          credential.className =
-            "shrink-0 rounded-md bg-neutral-900 px-2 py-1 text-[0.6875rem] font-bold text-white";
-          credential.textContent = user.password;
-          button.appendChild(identity);
-          button.appendChild(credential);
-          accountMount.appendChild(button);
-        });
     }
 
     function syncRole(role) {
@@ -314,11 +246,7 @@
       if (roleCopy) {
         roleCopy.textContent = config.roles[role].label;
       }
-      form.elements.email.placeholder =
-        role === "technician"
-          ? "rian@papuansmanado.id"
-          : "admin@papuansmanado.id";
-      renderSeedAccounts(role);
+      form.elements.email.placeholder = "nama@email.com";
       setFormMessage(form, "");
     }
 
@@ -336,25 +264,6 @@
         syncRole(event.target.value);
       }
     });
-
-    if (accountMount) {
-      accountMount.addEventListener("click", function (event) {
-        const button = event.target.closest("[data-api-account-id]");
-        if (!button) {
-          return;
-        }
-        const user = seedAccounts.find(function (candidate) {
-          return candidate.id === button.getAttribute("data-api-account-id");
-        });
-        if (!user) {
-          return;
-        }
-        syncRole(user.role);
-        form.elements.email.value = user.email;
-        form.elements.password.value = user.password;
-        form.elements.email.focus();
-      });
-    }
 
     form.addEventListener("submit", async function (event) {
       event.preventDefault();

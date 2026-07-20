@@ -61,10 +61,17 @@ textarea {
   overflow: hidden;
 }
 
+.admin-module-table-shell {
+  width: auto;
+  margin: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+}
+
 .admin-responsive-table {
   width: 100%;
   max-width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: collapse;
 }
 
@@ -95,12 +102,42 @@ textarea {
   flex-wrap: wrap;
 }
 
+.admin-responsive-table select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-responsive-table .admin-table-actions {
+  width: var(--admin-action-width, 10.5rem);
+  white-space: nowrap;
+}
+
+.admin-responsive-table .admin-table-actions .flex {
+  flex-wrap: nowrap;
+}
+
+@media (min-width: 640px) {
+  .admin-module-table-shell {
+    margin: 1.5rem;
+  }
+}
+
 @media (max-width: 1279px) {
   .admin-table-shell {
     overflow: visible;
     border: 0;
     border-radius: 0;
     background: transparent;
+  }
+
+  .admin-module-table-shell {
+    width: auto;
+    margin: 1.5rem;
+  }
+
+  .admin-module-table-shell .admin-responsive-table tbody {
+    padding: 0;
   }
 
   .admin-responsive-table,
@@ -170,6 +207,16 @@ textarea {
     border-bottom: 0;
   }
 
+  .admin-responsive-table tbody td.admin-table-actions {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    white-space: normal;
+  }
+
+  .admin-responsive-table tbody td.admin-table-actions .flex {
+    flex-wrap: nowrap;
+  }
+
   .admin-responsive-table tbody td::before {
     min-width: 0;
     color: #64748b;
@@ -192,9 +239,17 @@ textarea {
 }
 
 @media (max-width: 639px) {
+  .admin-module-table-shell {
+    margin: 1rem;
+  }
+
   .admin-responsive-table tbody {
     gap: 0.75rem;
     padding: 0.875rem;
+  }
+
+  .admin-module-table-shell .admin-responsive-table tbody {
+    padding: 0;
   }
 
   .admin-responsive-table tbody td {
@@ -1255,6 +1310,11 @@ textarea {
     padding: 0.4rem 0.5rem !important;
     border-bottom: 1px solid #cbd5e1 !important;
     text-align: left !important;
+  }
+
+  .admin-responsive-table .admin-table-actions {
+    width: auto !important;
+    white-space: normal !important;
   }
 
   .admin-responsive-table td::before {
