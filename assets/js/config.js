@@ -9,7 +9,7 @@
     window.PMD_API_BASE_URL ||
     (window.location.protocol === "file:" || localPreviewHost
       ? "http://localhost/service-papuans-manado/backend-API/api"
-      : "http://api.servicepapuansmanado.store/api");
+      : "https://api.servicepapuansmanado.store/api");
 
   const statusMeta = [
     {
