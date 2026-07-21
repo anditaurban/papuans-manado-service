@@ -105,7 +105,7 @@
       });
     } catch (error) {
       throw new ApiError(
-        "API tidak dapat dihubungi. Pastikan Laragon dan backend-API sedang berjalan.",
+        "API tidak dapat dihubungi. Pastikan server backend-API sedang berjalan.",
         { code: "NETWORK_ERROR" }
       );
     }
